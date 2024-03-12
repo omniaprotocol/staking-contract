@@ -1,0 +1,38 @@
+{
+  "name": "staking",
+  "version": "1.0.0",
+  "license": "Commons Clause",
+  "author": "Omnia",
+  "scripts": {
+    "prepare": "husky install",
+    "prettify": "yarn run prettier --config .prettierrc --write .",
+    "lint": "yarn run solhint --config .solhint.json ./src/**/*.sol ./test/**/*.sol ./script/**/*.sol",
+    "deploy:local": "npx hardhat run --network local hardhat-scripts/create-staking.js",
+    "upgrade:local": "hardhat run --network hardhat hardhat-scripts/upgrade-staking.js",
+    "deploy:sepolia": "hardhat run --network sepolia hardhat-scripts/create-staking.js",
+    "stake:sepolia": "STAKING='ADDRESS_HERE' TOKEN='ADDRESS_HERE' hardhat run --network sepolia hardhat-scripts/stake.js",
+    "get-stake:sepolia": "STAKING='ADDRESS_HERE' hardhat run --network sepolia hardhat-scripts/get-stake.js ",
+    "upgrade:sepolia": "STAKING='ADDRESS_HERE' hardhat run --network sepolia hardhat-scripts/upgrade-staking.js",
+    "deploy:goerli": "hardhat run --network goerli hardhat-scripts/create-staking.js",
+    "stake:goerli": "STAKING='ADDRESS_HERE' TOKEN='ADDRESS_HERE' hardhat run --network goerli hardhat-scripts/stake.js",
+    "get-stake:goerli": "STAKING=ADDRESS_HERE hardhat run --network goerli hardhat-scripts/get-stake.js",
+    "upgrade:goerli": "STAKING='ADDRESS_HERE'hardhat run --network goerli hardhat-scripts/upgrade-staking.js"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.0.1",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@openzeppelin/hardhat-upgrades": "^1.22.1",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.14.0",
+    "hardhat-contract-sizer": "^2.8.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.0",
+    "prettier": "^2.8.4",
+    "prettier-plugin-solidity": "^1.1.3",
+    "solhint": "^3.4.1"
+  },
+  "lint-staged": {
+    "*.sol": "yarn run solhint --config .solhint.json",
+    "{*.{sol,json},.prettierrc}": "prettier --config .prettierrc --write"
+  }
+}

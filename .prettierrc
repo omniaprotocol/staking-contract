@@ -1,0 +1,12 @@
+{
+  "trailingComma": "all",
+  "overrides": [
+    {
+      "files": "*.sol",
+      "options": {
+        "singleQuote": false,
+        "printWidth": 120
+      }
+    }
+  ]
+}
