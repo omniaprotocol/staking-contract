@@ -5,13 +5,15 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../src/Staking.sol";
 import "../src/Token.sol";
+import "../src/ERC721.sol";
 import "./Utils.t.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Base is Test {
     Staking public staking;
-    ERC20 public token;
+    ERC20Mock public token;
     ERC1967Proxy public proxy;
+    NFTCollectionMock public nftCollection;
 
     Utils public utils;
 
@@ -64,7 +66,7 @@ contract Base is Test {
     );
 
     function _deployERC20() internal {
-        token = new ERC20();
+        token = new ERC20Mock();
     }
 
     function _deployUtils() internal {
@@ -89,6 +91,10 @@ contract Base is Test {
         staking = new Staking();
     }
 
+    function _deployNFTCollection() internal {
+        nftCollection = new NFTCollectionMock("OMNIA pfp NFTs", "OMNIANFT");
+    }
+
     function _addSupervisors() internal {
         staking.grantRole(SUPERVISOR_ROLE, supervisor);
     }
@@ -97,6 +103,25 @@ contract Base is Test {
         token.transfer(alice, 1e58);
         token.transfer(bob, ONE_TOKEN * 1e6 * 5); // Bob gets 5M tokens
         token.transfer(address(staking), CONTRACT_INITIAL_BALANCE); // Staking smart contract gets 30M tokens
+    }
+
+    function _setupNFTCollectionBalances() internal {
+        // Alice gets 3 seekers and 1 commander
+        nftCollection.safeMint(alice, 0); // seeker nft
+        nftCollection.safeMint(alice, 10); // seeker nft
+        nftCollection.safeMint(alice, 2665); // seeker nft
+        nftCollection.safeMint(alice, 3000); // commander nft
+
+        // Bob gets 1 titans
+        nftCollection.safeMint(bob, 4000);
+
+        // Charlie gets 1 seeker, 2 commanders and 3 titans
+        nftCollection.safeMint(charlie, 5); // seeker nft
+        nftCollection.safeMint(charlie, 2666); // commander nft
+        nftCollection.safeMint(charlie, 3999); // commander nft
+        nftCollection.safeMint(charlie, 4020); // titan nft
+        nftCollection.safeMint(charlie, 4120); // titan nft
+        nftCollection.safeMint(charlie, 4443); // titan nft
     }
 
     function _stakeTokens(
@@ -164,6 +189,7 @@ contract Base is Test {
         _deployERC20();
         _deployUtils();
         _deployStaking();
+        _deployNFTCollection();
         _deployProxy(address(staking));
 
         staking = Staking(address(proxy));
@@ -173,6 +199,7 @@ contract Base is Test {
         staking.revokeRole(DEFAULT_ADMIN_ROLE, admin);
 
         _setupERC20Balances();
+        _setupNFTCollectionBalances();
 
         vm.stopPrank();
 

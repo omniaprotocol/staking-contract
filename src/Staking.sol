@@ -3,14 +3,22 @@ pragma solidity ^0.8.18;
 
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "openzeppelin-contracts-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "openzeppelin-contracts-upgradeable/contracts/security/PausableUpgradeable.sol";
 /// @dev due to PRB math internal limitations if powerBase is less than 1 - SD59x18 instead of UD60x18 has to be used
 import "prb-math/SD59x18.sol" as Prb;
 
-contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+contract Staking is
+    Initializable,
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable,
+    UUPSUpgradeable,
+    PausableUpgradeable
+{
     using SafeERC20 for IERC20;
 
     enum NodeSlaLevel {
@@ -44,12 +52,20 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
         uint32 withdrawnTimestamp;
         address staker;
         uint16 stakingDays;
+        uint16 apyBoostStakeLongPercent;
     }
 
     struct Settings {
         uint24 minRps;
         uint24 maxRps;
         uint16 nodeOwnerRewardPercent;
+        uint16 apyBoostStakeLongMinPercent; // applied when staking days 365 (1y)
+        uint16 apyBoostStakeLongDeltaPercent; // max boost = min + delta . Max will be applied when stake 365 days + stakeLongMaxDays
+        uint16 apyBoostStakeLongMaxDays;
+        uint16 nftApyBoostSeekers; /// @dev stored as percent * 10 to allow store of 1 decimals
+        uint16 nftApyBoostCommanders; /// @dev stored as percent * 10 to allow store of 1 decimals
+        uint16 nftApyBoostTitans; /// @dev stored as percent * 10 to allow store of 1 decimals
+        bool nftApyBoostEnabled;
         uint256 maxStakingAmountPerNode;
         uint256 minStakingAmount;
         /// @notice settings set indirectly
@@ -71,9 +87,16 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
     int256 private constant _APY_CURVE_RATIO = 801029995663981195;
     Prb.SD59x18 private constant _ONE = Prb.SD59x18.wrap(1e18);
 
+    /// @dev used for NFT APY boost
+    uint256 private constant _NFT_SEEKERS_ID_START = 0;
+    uint256 private constant _NFT_COMMANDERS_ID_START = 2666;
+    uint256 private constant _NFT_TITANS_ID_START = 4000;
+
     address private _token;
     uint256 private _contractStartTimestamp;
     uint256 private _stakeIdCounter;
+
+    address private _nftCollection;
 
     Settings private _s;
 
@@ -97,8 +120,19 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
     /// @notice node owner events
     event NodeTokensClaimed(address indexed sender, bytes32 indexed nodeId, uint256 amount);
 
-    /// @notice admin events
+    /// @notice supervisor events
     event NodeMeasured(bytes32 indexed nodeId, uint24 rps, uint16 penaltyDays, NodeSlaLevel slaLevel, uint256 epoch);
+
+    /// @notice admin events
+    event EmergencyTokenWithdraw(address indexed to, bytes32 reason, uint256 amount);
+    event NFTApyBoostDisabled(address indexed collection);
+    event NFTApyBoostEnabled(address indexed colelection);
+    event NFTApyBoostChanged(
+        address indexed collection,
+        uint16 seekersBoost,
+        uint16 commandersBoost,
+        uint16 titansBoost
+    );
 
     error ExistingMeasurement(bytes32 nodeId);
     error NothingStaked(bytes32 nodeId);
@@ -111,6 +145,20 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
     modifier onlySupervisor() {
         require(hasRole(_SUPERVISOR_ROLE, msg.sender), "Caller is not a supervisor");
         _;
+    }
+
+    function emergencyPause() external onlyAdmin {
+        _pause();
+    }
+
+    function emergencyResume() external onlyAdmin {
+        _unpause();
+    }
+
+    function emergencyWithdraw(uint256 amount, bytes32 reason) external whenPaused onlyAdmin {
+        require(amount > 0, "Cant be zero");
+        IERC20(_token).safeTransfer(msg.sender, amount);
+        emit EmergencyTokenWithdraw(msg.sender, reason, amount);
     }
 
     function setMinStakingAmount(uint256 amount) external onlyAdmin {
@@ -149,6 +197,53 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
         _s.nodeOwnerRewardPercent = percent;
     }
 
+    function setApyBoostMinPercent(uint16 percent) external onlyAdmin {
+        require(percent <= 1e2, "Exceeds limit");
+        _s.apyBoostStakeLongMinPercent = percent;
+    }
+
+    function setApyBoostDeltaPercent(uint16 percent) external onlyAdmin {
+        /// @dev for delta percent max is 1000%, meaning 10x boost
+        require(percent <= 1e3, "Exceeds limit");
+        _s.apyBoostStakeLongDeltaPercent = percent;
+    }
+
+    function setApyBoostMaxDays(uint16 maxDays) external onlyAdmin {
+        require(maxDays <= 1825, "Exceeds limit");
+        require(maxDays >= 366, "Min 366 days");
+        _s.apyBoostStakeLongMaxDays = maxDays;
+    }
+
+    function enableNFTApyBoost(address collection) external onlyAdmin {
+        require(collection != address(0), "Invalid address");
+        _nftCollection = collection;
+        _s.nftApyBoostEnabled = true;
+        emit NFTApyBoostEnabled(collection);
+    }
+
+    function disableNFTApyBoost() external onlyAdmin {
+        _s.nftApyBoostEnabled = false;
+        address disabledCollection = _nftCollection;
+        _nftCollection = address(0);
+        emit NFTApyBoostDisabled(disabledCollection);
+    }
+
+    /// @param seekersBoost is a % value multiplied by 10
+    /// @param commandersBoost is a % value multiplied by 10
+    /// @param titansBoost is a % value multiplied by 10
+    function changeNFTApyBoost(uint16 seekersBoost, uint16 commandersBoost, uint16 titansBoost) external onlyAdmin {
+        require(_s.nftApyBoostEnabled == true, "NFT APY boost disabled");
+        require(_nftCollection != address(0), "Invalid NFT collection address");
+        // Min value is 1%, meaning 1 * 10 = 10
+        require(seekersBoost > 9, "Invalid APY boost");
+        require(commandersBoost > 9, "Invalid APY boost");
+        require(titansBoost > 9, "Invalid APY boost");
+        _s.nftApyBoostSeekers = seekersBoost;
+        _s.nftApyBoostCommanders = commandersBoost;
+        _s.nftApyBoostTitans = titansBoost;
+        emit NFTApyBoostChanged(_nftCollection, seekersBoost, commandersBoost, titansBoost);
+    }
+
     /// @param penaltyRate is a % value and must be multiplied by 10ˆ2
     /// todo: confirm parameter bounds
     function setPenaltyRate(uint256 penaltyRate) external onlyAdmin {
@@ -163,7 +258,7 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
         uint24[] calldata rps,
         uint16[] calldata penaltyDays,
         uint8[] calldata slaLevels
-    ) external onlySupervisor {
+    ) external whenNotPaused onlySupervisor {
         require(nodeIds.length == rps.length, "Unequal lengths");
         require(rps.length == penaltyDays.length, "Unequal lengths");
         require(penaltyDays.length == slaLevels.length, "Unequal lengths");
@@ -176,32 +271,34 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
         }
     }
 
-    function stakeTokens(bytes32 nodeId, uint256 amount, uint16 stakingDays) external nonReentrant returns (uint256) {
+    function stakeTokensFor(
+        address staker,
+        bytes32 nodeId,
+        uint256 amount,
+        uint16 stakingDays
+    ) external whenNotPaused nonReentrant returns (uint256) {
         require(amount >= _s.minStakingAmount, "Amount too small");
         require(stakingDays >= _EPOCH_PERIOD_DAYS, "Period too short");
         require(IERC20(_token).allowance(msg.sender, address(this)) >= amount, "Not enough allowance");
-
         require((_nodes[nodeId].stakedAmount + amount) <= _s.maxStakingAmountPerNode, "Node max amount reached");
 
-        _stakeIdCounter += 1;
-        uint256 stakeIdCounter = _stakeIdCounter;
-
-        uint32 startTimestamp = _getNextDayStartTimestamp(
-            _toUint32(block.timestamp),
-            _toUint32(_contractStartTimestamp)
-        );
-
-        _stakes[stakeIdCounter] = Stake(nodeId, amount, 0, startTimestamp, 0, msg.sender, stakingDays);
-        _stakeIds[msg.sender].push(stakeIdCounter);
-        _nodes[nodeId].stakedAmount += amount;
-
-        IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
-        emit TokensStaked(msg.sender, stakeIdCounter, nodeId, amount, stakingDays);
-
-        return stakeIdCounter;
+        return _stakeTokens(staker, nodeId, amount, stakingDays);
     }
 
-    function unstakeTokens(uint256 stakeId) external nonReentrant {
+    function stakeTokens(
+        bytes32 nodeId,
+        uint256 amount,
+        uint16 stakingDays
+    ) external whenNotPaused nonReentrant returns (uint256) {
+        require(amount >= _s.minStakingAmount, "Amount too small");
+        require(stakingDays >= _EPOCH_PERIOD_DAYS, "Period too short");
+        require(IERC20(_token).allowance(msg.sender, address(this)) >= amount, "Not enough allowance");
+        require((_nodes[nodeId].stakedAmount + amount) <= _s.maxStakingAmountPerNode, "Node max amount reached");
+
+        return _stakeTokens(msg.sender, nodeId, amount, stakingDays);
+    }
+
+    function unstakeTokens(uint256 stakeId) external whenNotPaused nonReentrant {
         Stake storage stake = _stakes[stakeId];
 
         require(stake.staker == msg.sender, "Not authorized");
@@ -229,7 +326,7 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
     }
 
     /// @dev safety method in case the user wants to claim limited amount of epochs (can be removed if claim(uint256 stakeId) is sufficient)
-    function claim(uint256 stakeId, uint256 epochs) external nonReentrant {
+    function claim(uint256 stakeId, uint256 epochs) external whenNotPaused nonReentrant {
         require(epochs > 0, "Epoch count too low");
         require(_stakes[stakeId].staker == msg.sender, "Not authorized");
         require(_stakes[stakeId].withdrawnTimestamp == 0, "Already withdrawn");
@@ -249,7 +346,7 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
         }
     }
 
-    function claim(uint256 stakeId) external nonReentrant {
+    function claim(uint256 stakeId) external whenNotPaused nonReentrant {
         require(_stakes[stakeId].staker == msg.sender, "Not authorized");
         require(_stakes[stakeId].withdrawnTimestamp == 0, "Already withdrawn");
 
@@ -263,7 +360,7 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
         }
     }
 
-    function claim(bytes32 nodeId) external nonReentrant {
+    function claim(bytes32 nodeId) external whenNotPaused nonReentrant {
         uint256 uNodeId = uint256(nodeId);
         address owner = address(uint160(uNodeId >> 96));
         uint256 claimableAmount = _nodes[nodeId].claimableAmount;
@@ -308,15 +405,25 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
         __AccessControl_init();
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
+        __Pausable_init();
 
         _contractStartTimestamp = block.timestamp;
         _token = stakingToken;
+
+        _nftCollection = address(0); // enabling it forces setting collection
+        _s.nftApyBoostEnabled = false; // Disabled by default
+        _s.nftApyBoostSeekers = 25; /// 2,5 * 10
+        _s.nftApyBoostCommanders = 50; /// 5 * 10
+        _s.nftApyBoostTitans = 150; /// 15 * 10
 
         _s.minStakingAmount = 1000 * 1e18;
         _s.minRps = 25;
         _s.maxRps = 1000;
         _s.maxStakingAmountPerNode = 1e8 * 1e18;
         _s.nodeOwnerRewardPercent = 0;
+        _s.apyBoostStakeLongMinPercent = 30; // APY Boost starts at 30% for min 1year
+        _s.apyBoostStakeLongDeltaPercent = 20; // APY Boost goes 30%+20% = 50% for max days (see below)
+        _s.apyBoostStakeLongMaxDays = 2 * uint16(_DAYS_IN_ONE_YEAR); // 2 years
 
         int256 penaltyRate = 500; // Daily penalty rate, as percentage, multiplied by 10ˆ2. Example: 5 % = 500
         _s.dailyPenaltyRate = _getPeriodCompoundInterestRate(Prb.convert(penaltyRate), _DAYS_IN_ONE_YEAR, true);
@@ -359,6 +466,48 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
         }
 
         return Prb.convert(reward);
+    }
+
+    /// @dev WARNING caller responsibility to verify min amount, max per node, staking days, allowance etc.
+    function _stakeTokens(
+        address staker,
+        bytes32 nodeId,
+        uint256 amount,
+        uint16 stakingDays
+    ) private returns (uint256) {
+        uint16 apyBoost = 0;
+        if (stakingDays >= _DAYS_IN_ONE_YEAR) {
+            // Qualifies for APY boost = minBoost + N * delta / 365 where N is the no. of days over 1 year
+            apyBoost = _s.apyBoostStakeLongMinPercent;
+            uint16 stakingDaysCapped = stakingDays > _s.apyBoostStakeLongMaxDays
+                ? _s.apyBoostStakeLongMaxDays
+                : stakingDays;
+            uint16 deltaDays = _s.apyBoostStakeLongMaxDays - uint16(_DAYS_IN_ONE_YEAR);
+            require(deltaDays > 0, "Invalid APY Boost");
+            apyBoost += uint16(
+                ((stakingDaysCapped - _DAYS_IN_ONE_YEAR) * _s.apyBoostStakeLongDeltaPercent) / deltaDays
+            );
+            require(apyBoost <= 1000, "Safety measure, APY Boost to big");
+        }
+
+        _stakeIdCounter += 1;
+        uint256 stakeIdCounter = _stakeIdCounter;
+
+        uint32 startTimestamp = _getNextDayStartTimestamp(
+            _toUint32(block.timestamp),
+            _toUint32(_contractStartTimestamp)
+        );
+
+        // Funds are transfered from msg.sender, always
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
+
+        _stakes[stakeIdCounter] = Stake(nodeId, amount, 0, startTimestamp, 0, staker, stakingDays, apyBoost);
+        _stakeIds[staker].push(stakeIdCounter);
+        _nodes[nodeId].stakedAmount += amount;
+
+        emit TokensStaked(staker, stakeIdCounter, nodeId, amount, stakingDays);
+
+        return stakeIdCounter;
     }
 
     /// @dev Caller responsibility to validate epoch. slaLevel is validated by default.
@@ -428,7 +577,22 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
 
             emit PenaltyApplied(msg.sender, stakeId, uint256(-reward));
         } else {
+            // Node owner does not get APY boost, he gets a % from unboosted APY of staker
             _nodes[stakeNodeId].claimableAmount += (uint256(reward) * _s.nodeOwnerRewardPercent) / 100;
+
+            int256 nftBoostReward = 0;
+            if (_s.nftApyBoostEnabled == true) {
+                uint16 nftBoost = _getNFTApyBoost(msg.sender);
+                nftBoostReward = int256((uint256(reward) * nftBoost) / 1000); /// @dev divide by 1000 instead of 100 since nftBoost is % * 10
+            }
+
+            // Apply APY boost if set, applied on the initial reward (not on top of NFT APY boost but rather cumulating)
+            if (_stakes[stakeId].apyBoostStakeLongPercent > 0) {
+                reward += int256((uint256(reward) * _stakes[stakeId].apyBoostStakeLongPercent) / 100);
+            }
+
+            // Add NFT Boost
+            reward += nftBoostReward;
 
             emit TokensClaimed(msg.sender, stakeId, uint256(reward), latestClaimableEpoch);
         }
@@ -586,6 +750,25 @@ contract Staking is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgr
 
     function _getCurrentEpoch() private view returns (uint256) {
         return _getEpoch(block.timestamp);
+    }
+
+    /// @notice Returns cumulated % of APY boost for all NFTs owned, multiplied by 10
+    function _getNFTApyBoost(address owner) private view returns (uint16) {
+        uint16 boost = 0;
+        uint256 nftCount = IERC721Enumerable(_nftCollection).balanceOf(owner);
+        uint256 i = 0;
+        /// @dev cumulate boost for every NFT he owns based on their seekers/commanders/titans tiers
+        for (; i < nftCount; i = i + 1) {
+            uint256 nftId = IERC721Enumerable(_nftCollection).tokenOfOwnerByIndex(owner, i);
+            if (nftId >= _NFT_TITANS_ID_START) {
+                boost += _s.nftApyBoostTitans;
+            } else if (nftId >= _NFT_COMMANDERS_ID_START) {
+                boost += _s.nftApyBoostCommanders;
+            } else if (nftId >= _NFT_SEEKERS_ID_START) {
+                boost += _s.nftApyBoostSeekers;
+            }
+        }
+        return boost;
     }
 
     function _getDaysUntilEpochEnd(

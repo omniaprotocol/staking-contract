@@ -4,93 +4,12 @@ pragma solidity ^0.8.0;
 
 import "openzeppelin-contracts/contracts/utils/Context.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "openzeppelin-contracts/contracts/security/Pausable.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
-interface IERC20Metadata is IERC20 {
-    function name() external view returns (string memory);
-
-    function symbol() external view returns (string memory);
-
-    function decimals() external view returns (uint8);
-}
-
-abstract contract Ownable is Context {
-    address private _owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    constructor() {
-        _setOwner(_msgSender());
-    }
-
-    function owner() public view virtual returns (address) {
-        return _owner;
-    }
-
-    modifier onlyOwner() {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    function renounceOwnership() external virtual onlyOwner {
-        _setOwner(address(0));
-    }
-
-    function transferOwnership(address newOwner) external virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        _setOwner(newOwner);
-    }
-
-    function _setOwner(address newOwner) private {
-        address oldOwner = _owner;
-        _owner = newOwner;
-        emit OwnershipTransferred(oldOwner, newOwner);
-    }
-}
-
-abstract contract Pausable is Context, Ownable {
-    event Paused(address account);
-    event Unpaused(address account);
-
-    bool private _paused;
-
-    constructor() {
-        _paused = false;
-    }
-
-    function paused() public view virtual returns (bool) {
-        return _paused;
-    }
-
-    modifier whenNotPaused() {
-        require(!paused(), "Pausable: paused");
-        _;
-    }
-
-    modifier whenPaused() {
-        require(paused(), "Pausable: not paused");
-        _;
-    }
-
-    function _pause() private whenNotPaused {
-        _paused = true;
-        emit Paused(_msgSender());
-    }
-
-    function _unpause() private whenPaused {
-        _paused = false;
-        emit Unpaused(_msgSender());
-    }
-
-    function pause() external virtual onlyOwner {
-        _pause();
-    }
-
-    function unpause() external virtual onlyOwner {
-        _unpause();
-    }
-}
-
-contract ERC20 is Pausable, IERC20, IERC20Metadata {
+// Only used as mock for staking tests
+contract ERC20Mock is Pausable, Ownable, IERC20, IERC20Metadata {
     mapping(address => uint256) private _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;

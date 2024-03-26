@@ -191,6 +191,83 @@ contract StakingTest is Base {
         assertEq(fetchedStakeId, expectedStakeId);
     }
 
+    function testStakeTokensForOthers() public {
+        // Alice will stake for Bob
+        uint256 amount = ONE_TOKEN * 1000;
+        uint16 period = EPOCH_PERIOD_DAYS;
+        uint256 payerAmountBefore = token.balanceOf(alice);
+        uint256 contractAmountBefore = token.balanceOf(address(staking));
+        uint256 expectedStakeId = 1;
+
+        vm.startPrank(alice);
+        token.approve(address(staking), amount);
+
+        vm.expectEmit(true, true, true, true, address(token));
+        emit Transfer(alice, address(staking), amount);
+
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit TokensStaked(bob, expectedStakeId, NODE_1_ID, amount, period);
+
+        uint256 stakeId = staking.stakeTokensFor(bob, NODE_1_ID, amount, period);
+        assertEq(stakeId, expectedStakeId);
+
+        Staking.Stake memory stake = staking.getStake(stakeId);
+        assertEq(stake.nodeId, NODE_1_ID);
+        assertEq(stake.amount, amount);
+        assertEq(stake.lastClaimedEpoch, 0);
+        assertEq(stake.startTimestamp, block.timestamp);
+        assertEq(stake.withdrawnTimestamp, 0);
+        assertEq(stake.staker, bob);
+        assertEq(stake.stakingDays, period);
+        assertEq(token.balanceOf(alice), payerAmountBefore - amount);
+        assertEq(token.balanceOf(address(staking)), contractAmountBefore + amount);
+
+        assertEq(staking.getStakeCount(bob), 1);
+        assertEq(staking.getStakeId(bob, 0), expectedStakeId);
+
+        uint256 fetchedStakeId = staking.getStakeId(bob, 0);
+        assertEq(fetchedStakeId, expectedStakeId);
+    }
+
+    function testFuzzStakeTokensForOthers(uint256 amount, uint16 period, bytes32 nodeId) public {
+        vm.assume(amount > MIN_STAKING_AMOUNT && amount <= MAX_NODE_STAKING_AMOUNT);
+        vm.assume(period >= EPOCH_PERIOD_DAYS);
+
+        // Alice will stake for Bob
+        uint256 payerAmountBefore = token.balanceOf(alice);
+        uint256 contractAmountBefore = token.balanceOf(address(staking));
+        uint256 expectedStakeId = 1;
+
+        vm.startPrank(alice);
+        token.approve(address(staking), amount);
+
+        vm.expectEmit(true, true, true, true, address(token));
+        emit Transfer(alice, address(staking), amount);
+
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit TokensStaked(bob, expectedStakeId, nodeId, amount, period);
+
+        uint256 stakeId = staking.stakeTokensFor(bob, nodeId, amount, period);
+        assertEq(stakeId, expectedStakeId);
+
+        Staking.Stake memory stake = staking.getStake(stakeId);
+        assertEq(stake.nodeId, nodeId);
+        assertEq(stake.amount, amount);
+        assertEq(stake.lastClaimedEpoch, 0);
+        assertEq(stake.startTimestamp, block.timestamp);
+        assertEq(stake.withdrawnTimestamp, 0);
+        assertEq(stake.staker, bob);
+        assertEq(stake.stakingDays, period);
+        assertEq(token.balanceOf(alice), payerAmountBefore - amount);
+        assertEq(token.balanceOf(address(staking)), contractAmountBefore + amount);
+
+        assertEq(staking.getStakeCount(bob), 1);
+        assertEq(staking.getStakeId(bob, 0), expectedStakeId);
+
+        uint256 fetchedStakeId = staking.getStakeId(bob, 0);
+        assertEq(fetchedStakeId, expectedStakeId);
+    }
+
     function testFuzzStakeTokens(uint256 amount, uint16 period, bytes32 nodeId) public {
         vm.assume(amount > MIN_STAKING_AMOUNT && amount <= MAX_NODE_STAKING_AMOUNT);
         vm.assume(period >= EPOCH_PERIOD_DAYS);

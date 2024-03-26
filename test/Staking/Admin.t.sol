@@ -5,6 +5,126 @@ pragma solidity ^0.8.13;
 import "../Base.t.sol";
 
 contract AdminTest is Base {
+    // pausable/unpausable
+    function testEmergencyPause() public {
+        vm.prank(admin);
+        staking.emergencyPause();
+        assertEq(staking.paused(), true);
+    }
+
+    function testEmergencyResume() public {
+        vm.startPrank(admin);
+        staking.emergencyPause();
+        staking.emergencyResume();
+        assertEq(staking.paused(), false);
+    }
+
+    function testRevertNonAdminPause() public {
+        vm.expectRevert("Caller is not an admin");
+        staking.emergencyPause();
+    }
+
+    function testRevertNonAdminResume() public {
+        vm.prank(admin);
+        staking.emergencyPause();
+        vm.prank(mallory);
+        vm.expectRevert("Caller is not an admin");
+        staking.emergencyResume();
+    }
+
+    function testRevertStakeWhenPaused() public {
+        vm.prank(admin);
+        staking.emergencyPause();
+        vm.startPrank(alice);
+        uint256 amount = ONE_TOKEN * 1000; // 1k tokens
+        token.approve(address(staking), amount);
+        vm.expectRevert("Pausable: paused");
+        staking.stakeTokens(NODE_1_ID, amount, EPOCH_PERIOD_DAYS);
+    }
+
+    function testRevertStakeForWhenPaused() public {
+        vm.prank(admin);
+        staking.emergencyPause();
+        vm.startPrank(alice);
+        uint256 amount = ONE_TOKEN * 1000; // 1k tokens
+        token.approve(address(staking), amount);
+        vm.expectRevert("Pausable: paused");
+        staking.stakeTokensFor(bob, NODE_1_ID, amount, EPOCH_PERIOD_DAYS);
+    }
+
+    function testRevertAddMeasurementWhenPaused() public {
+        uint256 amount = ONE_TOKEN * 1000; // 1k tokens
+        _stakeTokens(alice, NODE_1_ID, amount, EPOCH_PERIOD_DAYS);
+
+        bytes32[] memory nodesArray = new bytes32[](1);
+        uint24[] memory rpsArray = new uint24[](1);
+        uint16[] memory penaltyArray = new uint16[](1);
+        uint8[] memory slaLevels = new uint8[](1);
+
+        nodesArray[0] = NODE_1_ID;
+        rpsArray[0] = 500;
+        penaltyArray[0] = 0;
+        slaLevels[0] = uint8(Staking.NodeSlaLevel.Gold);
+
+        vm.prank(admin);
+        staking.emergencyPause();
+        vm.prank(supervisor);
+        _fastforward(5 * EPOCH_PERIOD_SECONDS);
+        vm.expectRevert("Pausable: paused");
+        staking.addMeasurements(1, nodesArray, rpsArray, penaltyArray, slaLevels);
+    }
+
+    function testRevertClaimWhenPaused() public {
+        uint256 amount = ONE_TOKEN * 1000; // 1k tokens
+        uint256 stakeId = _stakeTokens(alice, NODE_1_ID, amount, EPOCH_PERIOD_DAYS);
+        _fastforward(2 * EPOCH_PERIOD_SECONDS);
+        _addMeasurement(1, NODE_1_ID, 100, 0, Staking.NodeSlaLevel.Gold);
+        vm.prank(admin);
+        staking.emergencyPause();
+        vm.prank(alice);
+        vm.expectRevert("Pausable: paused");
+        staking.claim(stakeId);
+    }
+
+    function testRevertUnstakeWhenPaused() public {
+        uint256 amount = ONE_TOKEN * 1000; // 1k tokens
+        uint256 stakeId = _stakeTokens(alice, NODE_1_ID, amount, EPOCH_PERIOD_DAYS);
+        _fastforward(EPOCH_PERIOD_SECONDS);
+        _addMeasurement(1, NODE_1_ID, 100, 0, Staking.NodeSlaLevel.Gold);
+        vm.prank(admin);
+        staking.emergencyPause();
+        vm.prank(alice);
+        vm.expectRevert("Pausable: paused");
+        staking.unstakeTokens(stakeId);
+    }
+
+    // Emergency withdrawn
+
+    function testRevertEmergencyWithdrawWhileActive() public {
+        vm.prank(admin);
+        vm.expectRevert("Pausable: not paused");
+        bytes32 reason = 0x00;
+        staking.emergencyWithdraw(ONE_TOKEN * 1e6 * 5, reason); // 5M tokens
+    }
+
+    function testRevertNonAdminEmergencyWithdraw() public {
+        vm.prank(admin);
+        staking.emergencyPause();
+        vm.prank(mallory);
+        vm.expectRevert("Caller is not an admin");
+        bytes32 reason = 0x00;
+        staking.emergencyWithdraw(ONE_TOKEN * 1e6 * 5, reason); // 5M tokens
+    }
+
+    function testEmergencyWithdraw() public {
+        vm.startPrank(admin);
+        staking.emergencyPause();
+        uint256 balanceBefore = token.balanceOf(admin);
+        bytes32 reason = 0x00;
+        staking.emergencyWithdraw(ONE_TOKEN * 1e6 * 5, reason); // 5M tokens
+        assertEq(token.balanceOf(admin), balanceBefore + uint256(ONE_TOKEN * 1e6 * 5));
+    }
+
     // max apy
 
     function testRevertIfNotAdminSetMaxApy() public {
