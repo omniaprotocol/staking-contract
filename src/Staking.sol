@@ -378,6 +378,10 @@ contract Staking is
         stake = _stakes[id];
     }
 
+    function getStakeCount() external view returns (uint256) {
+        return _stakeIdCounter;
+    }
+
     function getStakeCount(address staker) external view returns (uint256) {
         return _stakeIds[staker].length;
     }

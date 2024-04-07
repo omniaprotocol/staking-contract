@@ -5,6 +5,15 @@ pragma solidity ^0.8.13;
 import "../Base.t.sol";
 
 contract AdminTest is Base {
+    // getters
+    function testGetGlobalStakeCounter() public {
+        assertEq(staking.getStakeCount(), 0);
+        _stakeTokens(alice, NODE_1_ID, MIN_STAKING_AMOUNT, EPOCH_PERIOD_DAYS);
+        assertEq(staking.getStakeCount(), 1);
+        _stakeTokens(bob, NODE_1_ID, MIN_STAKING_AMOUNT, EPOCH_PERIOD_DAYS);
+        assertEq(staking.getStakeCount(), 2);
+    }
+
     // pausable/unpausable
     function testEmergencyPause() public {
         vm.prank(admin);
