@@ -15,7 +15,7 @@ contract ClaimMixedTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(56 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 penaltyAmount = 19654799409112110000000;
         uint256 rewardAmount = 54856312083274330000000;
@@ -37,7 +37,7 @@ contract ClaimMixedTest is ClaimBase {
         _fastforward(336 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
-        _addMeasurement(13, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(13, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 penaltyAmount = 19654799409112110000000;
         uint256 rewardAmount = 54856312083274330000000;
@@ -59,7 +59,7 @@ contract ClaimMixedTest is ClaimBase {
         _fastforward(14 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(14 days);
-        _addMeasurement(1, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 17585294208459970000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 1);
@@ -78,8 +78,8 @@ contract ClaimMixedTest is ClaimBase {
         _fastforward(14 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(42 days);
-        _addMeasurement(1, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(2, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(2, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 52848709778317987511840;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 2);
@@ -99,7 +99,7 @@ contract ClaimMixedTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, aliceAmount, period);
         _fastforward(56 days);
 
-        _addMeasurementsEpochInterval(1, 2, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 2, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 70526939997779360340904;
 
@@ -127,7 +127,7 @@ contract ClaimMixedTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 penaltyAmount = 19654799409112110000000;
         uint256 rewardAmount = 54856312083274330000000;
@@ -155,7 +155,7 @@ contract ClaimMixedTest is ClaimBase {
         _fastforward(14 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(14 days);
-        _addMeasurement(1, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         /// @notice First claim
 
@@ -168,7 +168,7 @@ contract ClaimMixedTest is ClaimBase {
         /// @notice Second claim
 
         _fastforward(28 days);
-        _addMeasurement(2, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(2, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount2 = 35201512674162220000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount2, 2, 2);
@@ -197,7 +197,7 @@ contract ClaimMixedTest is ClaimBase {
         _fastforward(uint256(period) * 1 days);
 
         /// @dev APY is at max 15.33%
-        _addMeasurementsEpochInterval(1, epochCount, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, epochCount, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 430693246945343107337685;
 
@@ -219,7 +219,7 @@ contract ClaimMixedTest is ClaimBase {
         _fastforward(uint256(period) * 1 days);
 
         /// @dev APY is at min 3.0502%
-        _addMeasurementsEpochInterval(1, epochCount, NODE_1_ID, 25, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, epochCount, NODE_1_ID, 25, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 absClaimAmount = 97048839250432841550024;
 
@@ -245,12 +245,12 @@ contract ClaimMixedTest is ClaimBase {
         uint256 stakerBalanceBefore = token.balanceOf(alice);
 
         vm.prank(admin);
-        staking.setMinStakingAmount(stakeAmount);
+        settings.setMinStakingAmount(stakeAmount);
 
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(uint256(period) * 1 days);
 
-        _addMeasurementsEpochInterval(1, 1, NODE_1_ID, 25, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 1, NODE_1_ID, 25, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 0;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 1);

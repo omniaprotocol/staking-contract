@@ -32,7 +32,7 @@ contract ClaimFailTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(30 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(bob);
         vm.expectRevert("Not authorized");
@@ -46,7 +46,7 @@ contract ClaimFailTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.startPrank(alice);
         staking.claim(stakeId);
@@ -62,7 +62,7 @@ contract ClaimFailTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.startPrank(alice);
         staking.unstakeTokens(stakeId);

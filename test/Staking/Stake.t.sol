@@ -105,7 +105,7 @@ contract StakingTest is Base {
 
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, amount, period);
         _fastforward(period * 1 days);
-        _addMeasurementsEpochInterval(1, 1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         staking.unstakeTokens(stakeId);
@@ -173,7 +173,7 @@ contract StakingTest is Base {
         uint256 stakeId = staking.stakeTokens(NODE_1_ID, amount, period);
         assertEq(stakeId, expectedStakeId);
 
-        Staking.Stake memory stake = staking.getStake(stakeId);
+        StakingUtils.Stake memory stake = staking.getStake(stakeId);
         assertEq(stake.nodeId, NODE_1_ID);
         assertEq(stake.amount, amount);
         assertEq(stake.lastClaimedEpoch, 0);
@@ -211,7 +211,7 @@ contract StakingTest is Base {
         uint256 stakeId = staking.stakeTokensFor(bob, NODE_1_ID, amount, period);
         assertEq(stakeId, expectedStakeId);
 
-        Staking.Stake memory stake = staking.getStake(stakeId);
+        StakingUtils.Stake memory stake = staking.getStake(stakeId);
         assertEq(stake.nodeId, NODE_1_ID);
         assertEq(stake.amount, amount);
         assertEq(stake.lastClaimedEpoch, 0);
@@ -250,7 +250,7 @@ contract StakingTest is Base {
         uint256 stakeId = staking.stakeTokensFor(bob, nodeId, amount, period);
         assertEq(stakeId, expectedStakeId);
 
-        Staking.Stake memory stake = staking.getStake(stakeId);
+        StakingUtils.Stake memory stake = staking.getStake(stakeId);
         assertEq(stake.nodeId, nodeId);
         assertEq(stake.amount, amount);
         assertEq(stake.lastClaimedEpoch, 0);
@@ -288,7 +288,7 @@ contract StakingTest is Base {
         uint256 stakeId = staking.stakeTokens(nodeId, amount, period);
         assertEq(stakeId, expectedStakeId);
 
-        Staking.Stake memory stake = staking.getStake(stakeId);
+        StakingUtils.Stake memory stake = staking.getStake(stakeId);
         assertEq(stake.nodeId, nodeId);
         assertEq(stake.amount, amount);
         assertEq(stake.lastClaimedEpoch, 0);

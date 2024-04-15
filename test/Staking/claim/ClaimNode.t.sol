@@ -36,12 +36,12 @@ contract ClaimNodeTest is ClaimBase {
         uint256 nodeOwnerBalanceBefore = token.balanceOf(alice);
 
         vm.prank(admin);
-        staking.setNodeOwnerRewardPercent(30);
+        settings.setNodeOwnerRewardPercent(30);
 
         uint256 stakeId = _stakeTokens(bob, nodeId, stakeAmount, period);
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, nodeId, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, nodeId, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(bob);
         staking.claim(stakeId);
@@ -63,7 +63,7 @@ contract ClaimNodeTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(56 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         staking.claim(stakeId);
@@ -79,12 +79,12 @@ contract ClaimNodeTest is ClaimBase {
         uint16 period = 28;
 
         vm.prank(admin);
-        staking.setNodeOwnerRewardPercent(30);
+        settings.setNodeOwnerRewardPercent(30);
 
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         staking.claim(stakeId);
@@ -102,12 +102,12 @@ contract ClaimNodeTest is ClaimBase {
         uint16 period = 28;
 
         vm.prank(admin);
-        staking.setNodeOwnerRewardPercent(30);
+        settings.setNodeOwnerRewardPercent(30);
 
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 14, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 14, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         staking.claim(stakeId);
@@ -129,12 +129,12 @@ contract ClaimNodeTest is ClaimBase {
         uint16 period = 28;
 
         vm.prank(admin);
-        staking.setNodeOwnerRewardPercent(30);
+        settings.setNodeOwnerRewardPercent(30);
 
         uint256 stakeId = _stakeTokens(bob, nodeId, stakeAmount, period);
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, nodeId, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, nodeId, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(bob);
         staking.claim(stakeId);
@@ -150,7 +150,7 @@ contract ClaimNodeTest is ClaimBase {
 
     function testRevertNothingToClaimIfPercent0() public {
         vm.prank(admin);
-        staking.setNodeOwnerRewardPercent(0);
+        settings.setNodeOwnerRewardPercent(0);
 
         bytes32 nodeId = _getWalletNodeId(alice, 999999999999999999999999);
 
@@ -160,7 +160,7 @@ contract ClaimNodeTest is ClaimBase {
         uint256 stakeId = _stakeTokens(bob, nodeId, stakeAmount, period);
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, nodeId, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, nodeId, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(bob);
         staking.claim(stakeId);
@@ -176,12 +176,12 @@ contract ClaimNodeTest is ClaimBase {
         bytes32 nodeId = _getWalletNodeId(alice, 999999999999999999999999);
 
         vm.prank(admin);
-        staking.setMinStakingAmount(stakeAmount);
+        settings.setMinStakingAmount(stakeAmount);
 
         uint256 stakeId = _stakeTokens(bob, nodeId, stakeAmount, period);
         _fastforward(uint256(period) * 1 days);
 
-        _addMeasurementsEpochInterval(1, 1, nodeId, 25, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 1, nodeId, 25, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(bob);
         staking.claim(stakeId);

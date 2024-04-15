@@ -10,6 +10,7 @@ import "./Utils.t.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Base is Test {
+    StakingSettings public settings;
     Staking public staking;
     ERC20Mock public token;
     ERC1967Proxy public proxy;
@@ -61,7 +62,7 @@ contract Base is Test {
         bytes32 indexed nodeId,
         uint24 rps,
         uint16 penaltyDays,
-        Staking.NodeSlaLevel slaLevel,
+        StakingUtils.NodeSlaLevel slaLevel,
         uint256 epoch
     );
 
@@ -85,6 +86,10 @@ contract Base is Test {
         vm.label(bob, "Bob");
         vm.label(charlie, "Charlie");
         vm.label(mallory, "Mallory");
+    }
+
+    function _deployStakingSettings() internal {
+        settings = new StakingSettings();
     }
 
     function _deployStaking() internal {
@@ -143,7 +148,7 @@ contract Base is Test {
         bytes32 node,
         uint24 rps,
         uint16 penaltyDays,
-        Staking.NodeSlaLevel sla
+        StakingUtils.NodeSlaLevel sla
     ) internal {
         bytes32[] memory nodesArray = new bytes32[](1);
         uint24[] memory rpsArray = new uint24[](1);
@@ -165,7 +170,7 @@ contract Base is Test {
         bytes32 node,
         uint24 rps,
         uint16 penaltyDays,
-        Staking.NodeSlaLevel sla
+        StakingUtils.NodeSlaLevel sla
     ) internal {
         uint256 i = startEpoch;
         for (; i <= endEpoch; i += 1) {
@@ -188,12 +193,13 @@ contract Base is Test {
 
         _deployERC20();
         _deployUtils();
+        _deployStakingSettings();
         _deployStaking();
         _deployNFTCollection();
         _deployProxy(address(staking));
 
         staking = Staking(address(proxy));
-        staking.initialize(address(token));
+        staking.initialize(address(token), address(settings));
 
         staking.grantRole(DEFAULT_ADMIN_ROLE, roleAdmin);
         staking.revokeRole(DEFAULT_ADMIN_ROLE, admin);

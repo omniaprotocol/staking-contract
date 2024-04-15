@@ -8,10 +8,10 @@ import "./ClaimBase.t.sol";
 contract ClaimOnlyRewardTest is ClaimBase {
     function testSetMaxApyToMin() public {
         uint256 newApy = 1;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Silver;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
 
         vm.prank(admin);
-        staking.setMaxApy(sla, newApy);
+        settings.setMaxApy(sla, newApy);
 
         uint256 stakeAmount = ONE_TOKEN * 1e7;
         uint16 period = 28;
@@ -20,7 +20,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Silver);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Silver);
         ///         should be 76708787616773832035... limits of accuracy when very low interest
         uint256 claimAmount = 76708787613910000000;
         vm.expectEmit(true, true, true, true, address(staking));
@@ -34,10 +34,10 @@ contract ClaimOnlyRewardTest is ClaimBase {
 
     function testSetMaxApyToMax() public {
         uint256 newApy = MAX_APY;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Silver;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
 
         vm.prank(admin);
-        staking.setMaxApy(sla, newApy);
+        settings.setMaxApy(sla, newApy);
 
         uint256 stakeAmount = ONE_TOKEN * 1e7;
         uint16 period = 28;
@@ -46,7 +46,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Silver);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Silver);
 
         uint256 claimAmount = 546120080444046580000000;
         vm.expectEmit(true, true, true, true, address(staking));
@@ -67,7 +67,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(56 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 110013545664089160000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 1);
@@ -86,7 +86,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         _fastforward(336 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
-        _addMeasurement(13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 110013545664089160000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 13, 13);
@@ -106,7 +106,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         _fastforward(14 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(14 days);
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         // perfect precision  54856312083277046086630
         uint256 claimAmount = 54856312083274330000000;
@@ -127,8 +127,8 @@ contract ClaimOnlyRewardTest is ClaimBase {
         _fastforward(14 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(42 days);
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(2, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(2, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 165473351486797172646287;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 2);
@@ -148,7 +148,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, aliceAmount, period);
         _fastforward(56 days);
 
-        _addMeasurementsEpochInterval(1, 2, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 2, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 221237389351136783081635;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 2);
@@ -167,7 +167,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(uint256(period) * 1 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 110013545664089160000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 1);
@@ -188,7 +188,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         _fastforward(uint256(period) * 1 days);
 
         /// @dev APY is at max 15.33%
-        _addMeasurementsEpochInterval(1, epochCount, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, epochCount, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         // exact should be    1403045300875211215497437... losing precision due compound limits
         uint256 claimAmount = 1403045300875174388806742;
@@ -210,7 +210,7 @@ contract ClaimOnlyRewardTest is ClaimBase {
         _fastforward(uint256(period) * 1 days);
 
         /// @dev APY is at min 3.0502%
-        _addMeasurementsEpochInterval(1, epochCount, NODE_1_ID, 25, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, epochCount, NODE_1_ID, 25, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         // exact should be    280449909517994442091182... due compound limits
         uint256 claimAmount = 280449901585290879541442;
@@ -228,12 +228,12 @@ contract ClaimOnlyRewardTest is ClaimBase {
         uint256 stakerBalanceBefore = token.balanceOf(alice);
 
         vm.prank(admin);
-        staking.setMinStakingAmount(stakeAmount);
+        settings.setMinStakingAmount(stakeAmount);
 
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(uint256(period) * 1 days);
 
-        _addMeasurementsEpochInterval(1, 1, NODE_1_ID, 25, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 1, NODE_1_ID, 25, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 0;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 1);

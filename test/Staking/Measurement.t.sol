@@ -15,7 +15,7 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -52,7 +52,7 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -75,7 +75,7 @@ contract MeasurementTest is Base {
         penaltyDays[1] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -97,8 +97,8 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](2);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
-        sla[1] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
+        sla[1] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -120,7 +120,7 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](2);
         nodeIds[0] = NODE_1_ID;
@@ -143,7 +143,7 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -165,7 +165,7 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -209,7 +209,7 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -231,7 +231,7 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -255,8 +255,8 @@ contract MeasurementTest is Base {
         penaltyDays[1] = 0;
 
         uint8[] memory sla = new uint8[](2);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
-        sla[1] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
+        sla[1] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](2);
         nodeIds[0] = NODE_1_ID;
@@ -281,7 +281,7 @@ contract MeasurementTest is Base {
         penaltyDays[0] = 0;
 
         uint8[] memory sla = new uint8[](1);
-        sla[0] = uint8(Staking.NodeSlaLevel.Diamond);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
 
         bytes32[] memory nodeIds = new bytes32[](1);
         nodeIds[0] = NODE_1_ID;
@@ -300,7 +300,7 @@ contract MeasurementTest is Base {
         uint256 epoch = 1;
         uint16 rps = 1000;
         uint16 penaltyDays = 0;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Diamond;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Diamond;
 
         _stakeTokens(alice, NODE_1_ID, 1e21, 28);
 
@@ -311,7 +311,7 @@ contract MeasurementTest is Base {
 
         _addMeasurement(epoch, NODE_1_ID, rps, penaltyDays, sla);
 
-        Staking.Measurement memory m = staking.getNodeMeasurement(NODE_1_ID, epoch);
+        StakingUtils.Measurement memory m = staking.getNodeMeasurement(NODE_1_ID, epoch);
 
         assertEq(m.rps, rps);
         assertEq(m.penaltyDays, penaltyDays);
@@ -321,7 +321,7 @@ contract MeasurementTest is Base {
     function testFuzzAddMeasurement(uint24 rps, uint16 penaltyDays, uint8 sla, uint32 fastForwardSeconds) public {
         vm.assume(MIN_RPS <= rps && rps <= MAX_RPS);
         vm.assume(penaltyDays <= EPOCH_PERIOD_DAYS);
-        vm.assume(sla <= uint8(Staking.NodeSlaLevel.Diamond));
+        vm.assume(sla <= uint8(StakingUtils.NodeSlaLevel.Diamond));
         vm.assume(fastForwardSeconds < (300 * 1 days));
 
         /// @dev make sure that fastForwards at least one epoch
@@ -334,10 +334,10 @@ contract MeasurementTest is Base {
         _fastforward(fastForwardSeconds);
 
         vm.expectEmit(true, true, true, true, address(staking));
-        emit NodeMeasured(NODE_1_ID, rps, penaltyDays, Staking.NodeSlaLevel(sla), epoch);
-        _addMeasurement(epoch, NODE_1_ID, rps, penaltyDays, Staking.NodeSlaLevel(sla));
+        emit NodeMeasured(NODE_1_ID, rps, penaltyDays, StakingUtils.NodeSlaLevel(sla), epoch);
+        _addMeasurement(epoch, NODE_1_ID, rps, penaltyDays, StakingUtils.NodeSlaLevel(sla));
 
-        Staking.Measurement memory m = staking.getNodeMeasurement(NODE_1_ID, epoch);
+        StakingUtils.Measurement memory m = staking.getNodeMeasurement(NODE_1_ID, epoch);
 
         assertEq(m.rps, rps);
         assertEq(m.penaltyDays, penaltyDays);
@@ -379,7 +379,7 @@ contract MeasurementTest is Base {
 
         i = 0;
         for (; i < uniqueNodeIds.length; i = i + 1) {
-            Staking.Measurement memory m = staking.getNodeMeasurement(uniqueNodeIds[i], previousEpoch);
+            StakingUtils.Measurement memory m = staking.getNodeMeasurement(uniqueNodeIds[i], previousEpoch);
 
             assertEq(m.rps, rps[i], "Unexpected rps");
             assertEq(m.penaltyDays, penaltyDays[i], "Unexpected penaltyDays");

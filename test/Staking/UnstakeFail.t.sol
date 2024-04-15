@@ -34,7 +34,7 @@ contract UnstakeFailTest is Base {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
         vm.prank(alice);
 
         vm.expectEmit(true, true, true, true, address(staking));
@@ -89,8 +89,8 @@ contract UnstakeFailTest is Base {
         _fastforward(56 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(2, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(2, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
 
         _fastforward(28 days);
 
@@ -110,7 +110,7 @@ contract UnstakeFailTest is Base {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days - 1);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         vm.expectRevert("Too early");

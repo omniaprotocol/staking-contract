@@ -10,10 +10,10 @@ contract ApyParamCalculation is Base {
         uint24 maxRps = type(uint24).max;
 
         vm.prank(admin);
-        staking.setMinRps(minRps);
+        settings.setMinRps(minRps);
 
         vm.prank(admin);
-        staking.setMaxRps(maxRps);
+        settings.setMaxRps(maxRps);
 
         uint256 stakeAmount = ONE_TOKEN * 1e3;
         uint16 period = 28;
@@ -23,8 +23,8 @@ contract ApyParamCalculation is Base {
 
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, NODE_1_ID, maxRps, 0, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(1, keccak256("NODE_2"), minRps, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, maxRps, 0, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(1, keccak256("NODE_2"), minRps, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         /// @notice claim from node with max RPS
 
@@ -52,10 +52,10 @@ contract ApyParamCalculation is Base {
         uint24 maxRps = type(uint24).max;
 
         vm.prank(admin);
-        staking.setMaxRps(maxRps);
+        settings.setMaxRps(maxRps);
 
         vm.prank(admin);
-        staking.setMinRps(minRps);
+        settings.setMinRps(minRps);
 
         uint256 stakeAmount = ONE_TOKEN * 1e3;
         uint16 period = 28;
@@ -65,8 +65,8 @@ contract ApyParamCalculation is Base {
 
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, NODE_1_ID, maxRps, 0, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(1, keccak256("NODE_2"), minRps, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, maxRps, 0, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(1, keccak256("NODE_2"), minRps, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         /// @notice claim from node with max RPS
 
@@ -94,10 +94,10 @@ contract ApyParamCalculation is Base {
         uint24 maxRps = 2;
 
         vm.prank(admin);
-        staking.setMinRps(minRps);
+        settings.setMinRps(minRps);
 
         vm.prank(admin);
-        staking.setMaxRps(maxRps);
+        settings.setMaxRps(maxRps);
 
         uint256 stakeAmount = ONE_TOKEN * 1e3;
         uint16 period = 28;
@@ -107,8 +107,8 @@ contract ApyParamCalculation is Base {
 
         _fastforward(period * 1 days);
 
-        _addMeasurement(1, NODE_1_ID, maxRps, 0, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(1, keccak256("NODE_2"), minRps, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, maxRps, 0, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(1, keccak256("NODE_2"), minRps, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         /// @notice claim from node with max RPS
 

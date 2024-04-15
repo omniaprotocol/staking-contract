@@ -14,7 +14,7 @@ contract ClaimLimitedEpochsTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 110013545664089160000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 1);
@@ -33,7 +33,7 @@ contract ClaimLimitedEpochsTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(56 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 110013545664089160000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 1);
@@ -52,7 +52,7 @@ contract ClaimLimitedEpochsTest is ClaimBase {
         _fastforward(336 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
-        _addMeasurement(13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 110013545664089160000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 13, 13);
@@ -71,7 +71,7 @@ contract ClaimLimitedEpochsTest is ClaimBase {
         _fastforward(14 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(14 days);
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         // perfect precision  54856312083277046086630
         uint256 claimAmount = 54856312083274330000000;
@@ -91,8 +91,8 @@ contract ClaimLimitedEpochsTest is ClaimBase {
         _fastforward(14 days);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(42 days);
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(2, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(2, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 165473351486797172646287;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 2);
@@ -111,7 +111,7 @@ contract ClaimLimitedEpochsTest is ClaimBase {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, aliceAmount, period);
         _fastforward(56 days);
 
-        _addMeasurementsEpochInterval(1, 2, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 2, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 110013545664089160000000;
         _expectClaimEvents(alice, stakeId, true, claimAmount, 1, 1);

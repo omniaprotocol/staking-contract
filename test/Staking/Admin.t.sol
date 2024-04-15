@@ -73,7 +73,7 @@ contract AdminTest is Base {
         nodesArray[0] = NODE_1_ID;
         rpsArray[0] = 500;
         penaltyArray[0] = 0;
-        slaLevels[0] = uint8(Staking.NodeSlaLevel.Gold);
+        slaLevels[0] = uint8(StakingUtils.NodeSlaLevel.Gold);
 
         vm.prank(admin);
         staking.emergencyPause();
@@ -87,7 +87,7 @@ contract AdminTest is Base {
         uint256 amount = ONE_TOKEN * 1000; // 1k tokens
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, amount, EPOCH_PERIOD_DAYS);
         _fastforward(2 * EPOCH_PERIOD_SECONDS);
-        _addMeasurement(1, NODE_1_ID, 100, 0, Staking.NodeSlaLevel.Gold);
+        _addMeasurement(1, NODE_1_ID, 100, 0, StakingUtils.NodeSlaLevel.Gold);
         vm.prank(admin);
         staking.emergencyPause();
         vm.prank(alice);
@@ -99,7 +99,7 @@ contract AdminTest is Base {
         uint256 amount = ONE_TOKEN * 1000; // 1k tokens
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, amount, EPOCH_PERIOD_DAYS);
         _fastforward(EPOCH_PERIOD_SECONDS);
-        _addMeasurement(1, NODE_1_ID, 100, 0, Staking.NodeSlaLevel.Gold);
+        _addMeasurement(1, NODE_1_ID, 100, 0, StakingUtils.NodeSlaLevel.Gold);
         vm.prank(admin);
         staking.emergencyPause();
         vm.prank(alice);
@@ -138,46 +138,46 @@ contract AdminTest is Base {
 
     function testRevertIfNotAdminSetMaxApy() public {
         vm.expectRevert("Caller is not an admin");
-        staking.setMaxApy(Staking.NodeSlaLevel.Silver, 100);
+        settings.setMaxApy(StakingUtils.NodeSlaLevel.Silver, 100);
     }
 
     function testRevertIfNotAdminSetMaxRps() public {
         vm.expectRevert("Caller is not an admin");
-        staking.setMaxRps(MAX_RPS);
+        settings.setMaxRps(MAX_RPS);
     }
 
     function testRevertIfApyExceedMaxSetMaxApy() public {
         uint256 newApy = MAX_APY + 1;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Silver;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
 
         vm.prank(admin);
         vm.expectRevert("Invalid APY");
-        staking.setMaxApy(sla, newApy);
+        settings.setMaxApy(sla, newApy);
     }
 
     function testRevertIfApyBelowMinSetMaxApy() public {
         uint256 newApy = 0;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Silver;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
 
         vm.prank(admin);
         vm.expectRevert("Invalid APY");
-        staking.setMaxApy(sla, newApy);
+        settings.setMaxApy(sla, newApy);
     }
 
     function testSetMaxApyToMin() public {
         uint256 newApy = 1;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Silver;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
 
         vm.prank(admin);
-        staking.setMaxApy(sla, newApy);
+        settings.setMaxApy(sla, newApy);
     }
 
     function testSetMaxApyToMax() public {
         uint256 newApy = MAX_APY;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Silver;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
 
         vm.prank(admin);
-        staking.setMaxApy(sla, newApy);
+        settings.setMaxApy(sla, newApy);
     }
 
     // supervisor management
@@ -186,11 +186,12 @@ contract AdminTest is Base {
         vm.expectRevert(
             abi.encodePacked(
                 "AccessControl: account ",
-                StringsUpgradeable.toHexString(address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496)),
+                StringsUpgradeable.toHexString(address(0x0000000000000000000000000000000000000001)),
                 " is missing role ",
                 StringsUpgradeable.toHexString(uint256(DEFAULT_ADMIN_ROLE), 32)
             )
         );
+        vm.prank(address(1));
         staking.grantRole(SUPERVISOR_ROLE, alice);
     }
 
@@ -198,11 +199,12 @@ contract AdminTest is Base {
         vm.expectRevert(
             abi.encodePacked(
                 "AccessControl: account ",
-                StringsUpgradeable.toHexString(address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496)),
+                StringsUpgradeable.toHexString(address(0x0000000000000000000000000000000000000001)),
                 " is missing role ",
                 StringsUpgradeable.toHexString(uint256(DEFAULT_ADMIN_ROLE), 32)
             )
         );
+        vm.prank(address(1));
         staking.revokeRole(SUPERVISOR_ROLE, alice);
     }
 
@@ -248,12 +250,12 @@ contract AdminTest is Base {
 
     function testRevertIfNotAdminSetMinStaking() public {
         vm.expectRevert("Caller is not an admin");
-        staking.setMinStakingAmount(100);
+        settings.setMinStakingAmount(100);
     }
 
     function testRevertIfNotAdminSetMinRps() public {
         vm.expectRevert("Caller is not an admin");
-        staking.setMinRps(MIN_RPS);
+        settings.setMinRps(MIN_RPS);
     }
 
     function testFuzzSetMinStaking(uint256 amount) public {
@@ -261,7 +263,7 @@ contract AdminTest is Base {
         vm.assume(amount <= 1e8 * 1e18 && amount > 0);
 
         vm.prank(admin);
-        staking.setMinStakingAmount(amount);
+        settings.setMinStakingAmount(amount);
         uint16 period = EPOCH_PERIOD_DAYS;
 
         _stakeTokens(alice, NODE_1_ID, amount, period);
@@ -274,7 +276,7 @@ contract AdminTest is Base {
         vm.assume(amount >= 1000 * ONE_TOKEN && amount < 100e6 ether);
 
         vm.prank(admin);
-        staking.setMaxStakingAmountPerNode(amount);
+        settings.setMaxStakingAmountPerNode(amount);
         uint16 period = EPOCH_PERIOD_DAYS;
 
         _stakeTokens(alice, NODE_1_ID, amount, period);
@@ -287,7 +289,7 @@ contract AdminTest is Base {
 
         vm.prank(admin);
         vm.expectRevert("Exceeds max RPS or below 1");
-        staking.setMinRps(minRps);
+        settings.setMinRps(minRps);
     }
 
     function testRevertIfMinRpsAboveMaxSetMinRps() public {
@@ -295,17 +297,17 @@ contract AdminTest is Base {
 
         vm.prank(admin);
         vm.expectRevert("Exceeds max RPS or below 1");
-        staking.setMinRps(minRps);
+        settings.setMinRps(minRps);
     }
 
     function testSetMinRps() public {
         uint24 minRps = MIN_RPS - 1;
         uint256 epoch = 1;
         uint16 penaltyDays = 0;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Diamond;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Diamond;
 
         vm.prank(admin);
-        staking.setMinRps(minRps);
+        settings.setMinRps(minRps);
 
         _stakeTokens(alice, NODE_1_ID, 1e21, 28);
 
@@ -318,17 +320,17 @@ contract AdminTest is Base {
 
         vm.prank(admin);
         vm.expectRevert("Below min RPS");
-        staking.setMaxRps(maxRps);
+        settings.setMaxRps(maxRps);
     }
 
     function testSetMaxRps() public {
         uint24 maxRps = 2 ** 24 - 1;
         uint256 epoch = 1;
         uint16 penaltyDays = 0;
-        Staking.NodeSlaLevel sla = Staking.NodeSlaLevel.Diamond;
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Diamond;
 
         vm.prank(admin);
-        staking.setMaxRps(maxRps);
+        settings.setMaxRps(maxRps);
 
         _stakeTokens(alice, NODE_1_ID, 1e21, 28);
 
@@ -341,41 +343,45 @@ contract AdminTest is Base {
     function testRevertSetPenaltyRateOutOfBounds() public {
         vm.prank(admin);
         vm.expectRevert("Rate exceeds limit");
-        staking.setPenaltyRate(1e4);
+        settings.setPenaltyRate(1e4);
     }
 
     function testSetPenaltyRate() public {
         vm.prank(admin);
-        staking.setPenaltyRate(1e4 - 1);
+        settings.setPenaltyRate(1e4 - 1);
     }
 
     function testSetPenaltyRateToZero() public {
         vm.prank(admin);
-        staking.setPenaltyRate(0);
+        settings.setPenaltyRate(0);
     }
 
     // node owner reward percent
 
     function testSetNodeOwnerRewardPercentToZero() public {
         vm.prank(admin);
-        staking.setNodeOwnerRewardPercent(0);
+        settings.setNodeOwnerRewardPercent(0);
     }
 
     function testSetNodeOwnerRewardPercentToMax() public {
         vm.prank(admin);
-        staking.setNodeOwnerRewardPercent(1e2);
+        settings.setNodeOwnerRewardPercent(1e2);
     }
 
     function testRevertSetNodeOwnerRewardPercentIfAboveMax() public {
         vm.prank(admin);
         vm.expectRevert("Exceeds limit");
-        staking.setNodeOwnerRewardPercent(1e2 + 1);
+        settings.setNodeOwnerRewardPercent(1e2 + 1);
     }
 
     // other
 
-    function testDefaultAdmin() public {
+    function testDefaultAdminStaking() public {
         assertEq(staking.hasRole(ADMIN_ROLE, admin), true);
+    }
+
+    function testDefaultAdminSettings() public {
+        assertEq(settings.hasRole(ADMIN_ROLE, admin), true);
     }
 
     function testVerifyStartEpoch() public {

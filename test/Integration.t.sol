@@ -34,7 +34,13 @@ contract IntegrationTest is Base {
         uint16 toEpoch = (155 + 293) / EPOCH_PERIOD_DAYS;
         uint16 fromEpoch = 155 / EPOCH_PERIOD_DAYS;
         for (uint16 epoch = fromEpoch + 1; epoch <= toEpoch; epoch += 1) {
-            _addMeasurement(epoch, NODE_1_ID, ((25 * epoch - 1) % 1000) + 25, epoch % 29, Staking.NodeSlaLevel.Diamond);
+            _addMeasurement(
+                epoch,
+                NODE_1_ID,
+                ((25 * epoch - 1) % 1000) + 25,
+                epoch % 29,
+                StakingUtils.NodeSlaLevel.Diamond
+            );
         }
 
         uint256 aliceStake1Rewards = 3470048960287488158967;

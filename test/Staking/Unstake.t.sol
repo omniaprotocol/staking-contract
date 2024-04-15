@@ -14,7 +14,7 @@ contract UnstakeTest is Base {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, amount, period);
         _fastforward(28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         staking.unstakeTokens(stakeId);
@@ -22,7 +22,7 @@ contract UnstakeTest is Base {
         assertGe(token.balanceOf(alice), stakerAmountBefore);
         assertLe(token.balanceOf(address(staking)), contractAmountBefore);
 
-        Staking.Stake memory stake = staking.getStake(stakeId);
+        StakingUtils.Stake memory stake = staking.getStake(stakeId);
         assertEq(stake.withdrawnTimestamp, block.timestamp);
     }
 
@@ -38,8 +38,8 @@ contract UnstakeTest is Base {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, amount, period);
         _fastforward(56 days - 1);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(2, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(2, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         staking.unstakeTokens(stakeId);
@@ -47,7 +47,7 @@ contract UnstakeTest is Base {
         assertGe(token.balanceOf(alice), stakerAmountBefore);
         assertLe(token.balanceOf(address(staking)), contractAmountBefore);
 
-        Staking.Stake memory stake = staking.getStake(stakeId);
+        StakingUtils.Stake memory stake = staking.getStake(stakeId);
         assertEq(stake.withdrawnTimestamp, block.timestamp);
     }
 
@@ -59,7 +59,7 @@ contract UnstakeTest is Base {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 penaltyAmount = 39270967704245690000000;
 
@@ -77,9 +77,9 @@ contract UnstakeTest is Base {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(27 days + 28 days + 28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(2, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
-        _addMeasurement(3, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(2, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
+        _addMeasurement(3, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         staking.claim(stakeId);
@@ -99,7 +99,7 @@ contract UnstakeTest is Base {
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, period);
         _fastforward(28 days);
 
-        _addMeasurement(1, NODE_1_ID, 1000, 28, Staking.NodeSlaLevel.Diamond);
+        _addMeasurement(1, NODE_1_ID, 1000, 28, StakingUtils.NodeSlaLevel.Diamond);
 
         vm.prank(alice);
         staking.unstakeTokens(stakeId);

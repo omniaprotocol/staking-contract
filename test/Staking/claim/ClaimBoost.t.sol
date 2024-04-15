@@ -11,7 +11,7 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 364; // almost one full year to avoid boost
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(364 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 152849424536692522003734; // MAX APY , no boost
         uint256 stakerBalanceBefore = token.balanceOf(alice);
@@ -26,7 +26,7 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 365; // one full year
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(365 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 198704251897700278604854; // MAX APY + 30%
         uint256 stakerBalanceBefore = token.balanceOf(alice);
@@ -41,7 +41,7 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 730; //2 years
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(365 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 229274136805038783005601; // MAX APY + 50%
         uint256 stakerBalanceBefore = token.balanceOf(alice);
@@ -56,12 +56,12 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 1095; //3 years
         // Set boost setings to 30-100% for 3 years
         vm.prank(admin);
-        staking.setApyBoostDeltaPercent(70); // delta 70% => max boost 30+70=100%
+        settings.setApyBoostDeltaPercent(70); // delta 70% => max boost 30+70=100%
         vm.prank(admin);
-        staking.setApyBoostMaxDays(1095); // max boost will be reached at 3 years mark
+        settings.setApyBoostMaxDays(1095); // max boost will be reached at 3 years mark
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(730 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 305698849073385044007468; // MAX APY + 100%
         uint256 stakerBalanceBefore = token.balanceOf(alice);
@@ -76,20 +76,20 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 1095; //3 years
         // Set boost setings to 30-40% for 3 years
         vm.prank(admin);
-        staking.setApyBoostDeltaPercent(10);
+        settings.setApyBoostDeltaPercent(10);
         vm.prank(admin);
-        staking.setApyBoostMaxDays(1095); // max boost will be reached at 3 years mark
+        settings.setApyBoostMaxDays(1095); // max boost will be reached at 3 years mark
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(730 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 213989194351369530805227; // MAX APY + 40%
         uint256 stakerBalanceBefore = token.balanceOf(alice);
         // APY Boost changes before claim
         vm.prank(admin);
-        staking.setApyBoostMaxDays(1460); // max boost will be reached at 4 years instead of 3
+        settings.setApyBoostMaxDays(1460); // max boost will be reached at 4 years instead of 3
         vm.prank(admin);
-        staking.setApyBoostDeltaPercent(2); // max apy now is 30+2=32%
+        settings.setApyBoostDeltaPercent(2); // max apy now is 30+2=32%
         vm.prank(alice);
         staking.claim(stakeId); // claim happens at stake moment settings
         uint256 stakerBalanceAfter = token.balanceOf(alice);
@@ -99,10 +99,10 @@ contract ClaimCacheTest is ClaimBase {
     function testRevertBoostMaxDaysTooLow() public {
         vm.prank(admin);
         vm.expectRevert("Min 366 days");
-        staking.setApyBoostMaxDays(100);
+        settings.setApyBoostMaxDays(100);
         vm.prank(admin);
         vm.expectRevert("Min 366 days");
-        staking.setApyBoostMaxDays(365);
+        settings.setApyBoostMaxDays(365);
     }
 
     function testClaimWithNoBoostMaxYears() public {
@@ -110,14 +110,14 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 730; //2 years
         // Set boost setings to 0-0% for 1 years
         vm.prank(admin);
-        staking.setApyBoostMinPercent(0);
+        settings.setApyBoostMinPercent(0);
         vm.prank(admin);
-        staking.setApyBoostDeltaPercent(0);
+        settings.setApyBoostDeltaPercent(0);
         vm.prank(admin);
-        staking.setApyBoostMaxDays(366);
+        settings.setApyBoostMaxDays(366);
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(730 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 152849424536692522003734; // MAX APY, no boost
         uint256 stakerBalanceBefore = token.balanceOf(alice);
@@ -133,7 +133,7 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 364;
         uint256 stakeId = _stakeTokens(alice, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(364 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 171955602603779087254200; // MAX APY + 12,5% * MAX APY, where 12,5% = 3 * 2.5% = 5%
         uint256 stakerBalanceBefore = token.balanceOf(alice);
@@ -149,7 +149,7 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 364;
         uint256 stakeId = _stakeTokens(bob, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(364 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 175776838217196400304294; // MAX APY + 15% * MAX APY, where 15% is from 1 Titan NFT
         uint256 stakerBalanceBefore = token.balanceOf(bob);
@@ -170,7 +170,7 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 364;
         uint256 stakeId = _stakeTokens(charlie, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(364 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 240737843645290722155881; // MAX APY + 57,5% * MAX APY, where 57% = 2.5% + 2 * 5% + 3 * 15%
         uint256 stakerBalanceBefore = token.balanceOf(charlie);
@@ -211,7 +211,7 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 364;
         uint256 stakeId = _stakeTokens(charlie, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(364 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 288885412374348866587057; // MAX APY + 89% * MAX APY, where 89% = 5% + 2 * 12% + 3 * 20%
         uint256 stakerBalanceBefore = token.balanceOf(charlie);
@@ -235,7 +235,7 @@ contract ClaimCacheTest is ClaimBase {
         uint16 stakingDays = 364;
         uint256 stakeId = _stakeTokens(charlie, NODE_1_ID, stakeAmount, stakingDays);
         _fastforward(364 days);
-        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, Staking.NodeSlaLevel.Diamond);
+        _addMeasurementsEpochInterval(1, 13, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
 
         uint256 claimAmount = 557900399558927705313629; // MAX APY + 265% * MAX APY, where 265% = 20% + 2 * 40% + 3 * 55%
         uint256 stakerBalanceBefore = token.balanceOf(charlie);
@@ -247,16 +247,16 @@ contract ClaimCacheTest is ClaimBase {
 
     function _changeNFTApyBoost(uint16 seekersBoost, uint16 commandersBoost, uint16 titansBoost) internal {
         vm.prank(admin);
-        staking.changeNFTApyBoost(seekersBoost, commandersBoost, titansBoost);
+        settings.changeNFTApyBoost(seekersBoost, commandersBoost, titansBoost);
     }
 
     function _disableNFTBoost() internal {
         vm.prank(admin);
-        staking.disableNFTApyBoost();
+        settings.disableNFTApyBoost();
     }
 
     function _enableNFTBoost() internal {
         vm.prank(admin);
-        staking.enableNFTApyBoost(address(nftCollection));
+        settings.enableNFTApyBoost(address(nftCollection));
     }
 }
