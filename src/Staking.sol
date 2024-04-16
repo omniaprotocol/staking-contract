@@ -229,6 +229,7 @@ library StakingUtils {
     }
 
     function calculateApyParameters(uint24 minRps, uint24 maxRps) external pure returns (Prb.SD59x18, Prb.SD59x18) {
+        require(maxRps > minRps, "Invalid parameters");
         Prb.SD59x18 maxRps_ = Prb.convert(int256(uint256(maxRps)));
 
         Prb.SD59x18 paramOne = Prb.div(
@@ -352,7 +353,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
 
     function setMinRps(uint24 rps) external override onlyAdmin returns (bool) {
         /// @dev zero is used to detect measurement existance
-        require(rps <= _s.maxRps && rps > 0, "Exceeds max RPS or below 1");
+        require(rps < _s.maxRps && rps > 0, "Exceeds max RPS or below 1");
         _s.minRps = rps;
         emit MinRpsChanged(msg.sender, rps);
         (_s.apyParameterOne, _s.apyParameterTwo) = StakingUtils.calculateApyParameters(_s.minRps, _s.maxRps);
@@ -360,7 +361,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
     }
 
     function setMaxRps(uint24 rps) external override onlyAdmin returns (bool) {
-        require(rps >= _s.minRps, "Below min RPS");
+        require(rps > _s.minRps, "Below min RPS");
         _s.maxRps = rps;
         emit MaxRpsChanged(msg.sender, rps);
         (_s.apyParameterOne, _s.apyParameterTwo) = StakingUtils.calculateApyParameters(_s.minRps, _s.maxRps);
@@ -629,6 +630,7 @@ contract Staking is
         uint256 amount,
         uint16 stakingDays
     ) external whenNotPaused nonReentrant returns (uint256) {
+        require(staker != address(0), "Invalid address");
         (uint256 minStakingAmount, uint256 maxStakingAmountPerNode) = IStakingSettings(_settings)
             .getStakingAmountRestrictions();
         require(amount >= minStakingAmount, "Amount too small");

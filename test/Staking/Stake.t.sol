@@ -191,6 +191,13 @@ contract StakingTest is Base {
         assertEq(fetchedStakeId, expectedStakeId);
     }
 
+    function testRevertTestTokensForInvalidAddress() public {
+        vm.startPrank(alice);
+        token.approve(address(staking), ONE_TOKEN);
+        vm.expectRevert("Invalid address");
+        staking.stakeTokensFor(address(0), NODE_1_ID, ONE_TOKEN, EPOCH_PERIOD_DAYS);
+    }
+
     function testStakeTokensForOthers() public {
         // Alice will stake for Bob
         uint256 amount = ONE_TOKEN * 1000;

@@ -333,8 +333,21 @@ contract AdminTest is Base, IStakingSettingsEvents {
         _addMeasurement(epoch, NODE_1_ID, minRps, penaltyDays, sla);
     }
 
+    function testRevertMinRpsEqualMaxRps() public {
+        uint24 rps = 100;
+        vm.startPrank(admin);
+        settings.setMinRps(rps);
+        vm.expectRevert("Below min RPS");
+        settings.setMaxRps(rps);
+        rps = 200;
+        settings.setMaxRps(rps);
+        vm.expectRevert("Exceeds max RPS or below 1");
+        settings.setMinRps(rps);
+        vm.stopPrank();
+    }
+
     function testFuzzSetMinRps(uint24 rps) public {
-        vm.assume(1 <= rps && rps <= MAX_RPS);
+        vm.assume(1 <= rps && rps < MAX_RPS);
 
         vm.prank(admin);
         settings.setMaxRps(MAX_RPS);
