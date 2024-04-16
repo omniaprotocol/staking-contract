@@ -164,7 +164,7 @@ contract Base is Test, IStakingEvents {
         vm.warp(block.timestamp + period);
     }
 
-    function setUp() public virtual {
+    function _setup() internal {
         vm.warp(1677441388);
         _labelAddresses();
 
@@ -193,5 +193,9 @@ contract Base is Test, IStakingEvents {
 
         vm.prank(roleAdmin);
         _addSupervisors();
+    }
+
+    function setUp() public virtual {
+        _setup();
     }
 }

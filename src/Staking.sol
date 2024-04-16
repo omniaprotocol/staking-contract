@@ -878,8 +878,11 @@ contract Staking is
             StakingUtils.toUint32(_contractStartTimestamp)
         );
 
+        uint256 contractBalanceBefore = IERC20(_token).balanceOf(address(this));
         // Funds are transfered from msg.sender, always
         IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
+        uint256 contractBalanceAfter = IERC20(_token).balanceOf(address(this));
+        require((contractBalanceBefore + amount) == contractBalanceAfter, "Invalid balance");
 
         _stakes[stakeIdCounter] = StakingUtils.Stake(
             nodeId,

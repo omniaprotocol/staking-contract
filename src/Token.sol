@@ -10,9 +10,9 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 // Only used as mock for staking tests
 contract ERC20Mock is Pausable, Ownable, IERC20, IERC20Metadata {
-    mapping(address => uint256) private _balances;
+    mapping(address => uint256) internal _balances;
 
-    mapping(address => mapping(address => uint256)) private _allowances;
+    mapping(address => mapping(address => uint256)) internal _allowances;
 
     // original max balance "100e6 ether"
     uint256 private _totalSupply = 1e59;
@@ -86,7 +86,7 @@ contract ERC20Mock is Pausable, Ownable, IERC20, IERC20Metadata {
         _burn(_msgSender(), amount);
     }
 
-    function _transfer(address sender, address recipient, uint256 amount) private {
+    function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
