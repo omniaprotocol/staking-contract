@@ -5,8 +5,6 @@ pragma solidity ^0.8.13;
 import "../Base.t.sol";
 
 contract UnstakeFailTest is Base {
-    event TokensUnstaked(address indexed sender, uint256 indexed stakeId, bytes32 nodeId, uint256 amount);
-
     function testRevertIfNoStake() public {
         vm.prank(alice);
         vm.expectRevert("Not authorized");

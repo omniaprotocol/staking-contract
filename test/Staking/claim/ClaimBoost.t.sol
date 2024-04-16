@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 import "./ClaimBase.t.sol";
 import "prb-math/casting/Uint256.sol";
 
-contract ClaimCacheTest is ClaimBase {
+contract ClaimCacheTest is ClaimBase, IStakingSettingsEvents {
     function testClaimWithoutBoost() public {
         uint256 stakeAmount = ONE_TOKEN * 1e6; // 1M tokens
         uint16 stakingDays = 364; // almost one full year to avoid boost
@@ -189,12 +189,14 @@ contract ClaimCacheTest is ClaimBase {
     function testRevertInvalidNFTApyBoost() public {
         _enableNFTBoost();
         vm.expectRevert("Invalid APY boost");
-        _changeNFTApyBoost(1, 1, 1);
+        vm.prank(admin);
+        settings.changeNFTApyBoost(1, 1, 1);
     }
 
     function testRevertChangeNFTApyBoostButDisabled() public {
         vm.expectRevert("NFT APY boost disabled");
-        _changeNFTApyBoost(100, 100, 100);
+        vm.prank(admin);
+        settings.changeNFTApyBoost(100, 100, 100);
     }
 
     function testChangeNFTApyBoostSeekersCommandersTitans() public {
@@ -246,16 +248,22 @@ contract ClaimCacheTest is ClaimBase {
     }
 
     function _changeNFTApyBoost(uint16 seekersBoost, uint16 commandersBoost, uint16 titansBoost) internal {
+        vm.expectEmit(true, true, true, true, address(settings));
+        emit NFTApyBoostChanged(address(nftCollection), seekersBoost, commandersBoost, titansBoost);
         vm.prank(admin);
         settings.changeNFTApyBoost(seekersBoost, commandersBoost, titansBoost);
     }
 
     function _disableNFTBoost() internal {
+        vm.expectEmit(true, false, false, true, address(settings));
+        emit NFTApyBoostDisabled(address(nftCollection));
         vm.prank(admin);
         settings.disableNFTApyBoost();
     }
 
     function _enableNFTBoost() internal {
+        vm.expectEmit(true, false, false, true, address(settings));
+        emit NFTApyBoostEnabled(address(nftCollection));
         vm.prank(admin);
         settings.enableNFTApyBoost(address(nftCollection));
     }

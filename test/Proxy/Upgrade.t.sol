@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 import "../Base.t.sol";
 import "./StakingV2.sol";
 
-contract UpgradeTest is Base {
+contract UpgradeTest is Base, ERC1967UpgradeUpgradeable {
     function testRevertUpgradeIfNotAdmin() public {
         StakingV2 stakingV2 = new StakingV2();
         vm.prank(alice);
@@ -16,6 +16,10 @@ contract UpgradeTest is Base {
     function testUpgradeToNewStaking() public {
         StakingV2 stakingV2 = new StakingV2();
         vm.prank(admin);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit UpgradeAuthorized(admin, address(staking), address(stakingV2));
+        vm.expectEmit(true, false, false, true, address(staking));
+        emit Upgraded(address(stakingV2));
         staking.upgradeTo(address(stakingV2));
 
         stakingV2 = StakingV2(address(proxy));

@@ -13,7 +13,7 @@ import "openzeppelin-contracts-upgradeable/contracts/security/PausableUpgradeabl
 /// @dev due to PRB math internal limitations if powerBase is less than 1 - SD59x18 instead of UD60x18 has to be used
 import "prb-math/SD59x18.sol" as Prb;
 
-interface IStakingSettings {
+interface IStakingSettingsEvents {
     /// @notice admin events
     event NFTApyBoostDisabled(address indexed collection);
     event NFTApyBoostEnabled(address indexed colelection);
@@ -23,7 +23,56 @@ interface IStakingSettings {
         uint16 commandersBoost,
         uint16 titansBoost
     );
+    event MinStakingAmountChanged(address indexed author, uint256 amount);
+    event MaxStakingPerNodeChanged(address indexed author, uint256 amount);
+    event MaxApyChanged(address indexed author, StakingUtils.NodeSlaLevel indexed slaLevel, uint256 amount);
+    event MinRpsChanged(address indexed author, uint24 rps);
+    event MaxRpsChanged(address indexed author, uint24 rps);
+    event NodeOwnerRewardPercentChanged(address indexed author, uint16 percent);
+    event StakeLongApyMinBoostChanged(address indexed author, uint16 percent);
+    event StakeLongApyDeltaBoostChanged(address indexed author, uint16 percent);
+    event StakeLongApyBoostMaxDaysChanged(address indexed author, uint16 maxDays);
+    event PenaltyRateChanged(address indexed author, uint256 penaltyRate);
+}
 
+interface IStakingEvents {
+    /// @notice staker events
+    event TokensStaked(
+        address indexed sender,
+        uint256 indexed stakeId,
+        bytes32 nodeId,
+        uint256 amount,
+        uint16 stakingDays
+    );
+    event TokensUnstaked(address indexed sender, uint256 indexed stakeId, bytes32 nodeId, uint256 amount);
+    event TokensClaimed(address indexed sender, uint256 indexed stakeId, uint256 amount, uint256 lastClaimedEpoch);
+    event EpochClaimed(address indexed sender, uint256 stakeId, uint256 epoch);
+    event PenaltyApplied(address indexed sender, uint256 stakeId, uint256 penaltyAmount);
+
+    /// @notice node owner events
+    event NodeTokensClaimed(address indexed sender, bytes32 indexed nodeId, uint256 amount);
+
+    /// @notice supervisor events
+    event NodeMeasured(
+        bytes32 indexed nodeId,
+        uint24 rps,
+        uint16 penaltyDays,
+        StakingUtils.NodeSlaLevel slaLevel,
+        uint256 epoch
+    );
+
+    /// @notice admin events
+    event EmergencyPause(address indexed author);
+    event EmergencyResume(address indexed author);
+    event EmergencyTokenWithdraw(address indexed to, bytes32 reason, uint256 amount);
+    event UpgradeAuthorized(
+        address indexed author,
+        address indexed oldImplementation,
+        address indexed newImplementation
+    );
+}
+
+interface IStakingSettings is IStakingSettingsEvents {
     function setMinStakingAmount(uint256 amount) external returns (bool);
 
     function setMaxStakingAmountPerNode(uint256 amount) external returns (bool);
@@ -279,6 +328,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
         require(amount > 0, "Cant be zero");
         require(_s.maxStakingAmountPerNode >= amount, "Above max stake amount per node");
         _s.minStakingAmount = amount;
+        emit MinStakingAmountChanged(msg.sender, amount);
         return true;
     }
 
@@ -286,6 +336,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
         require(amount <= 100e6 ether, "Exceed token supply");
         require(amount >= _s.minStakingAmount, "Below min stake amount");
         _s.maxStakingAmountPerNode = amount;
+        emit MaxStakingPerNodeChanged(msg.sender, amount);
         return true;
     }
 
@@ -293,6 +344,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
     function setMaxApy(StakingUtils.NodeSlaLevel slaLevel, uint256 apy) external override onlyAdmin returns (bool) {
         require(apy > 0 && apy <= 1e4, "Invalid APY");
         _maxApy[slaLevel] = apy;
+        emit MaxApyChanged(msg.sender, slaLevel, apy);
         return true;
     }
 
@@ -300,6 +352,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
         /// @dev zero is used to detect measurement existance
         require(rps <= _s.maxRps && rps > 0, "Exceeds max RPS or below 1");
         _s.minRps = rps;
+        emit MinRpsChanged(msg.sender, rps);
         (_s.apyParameterOne, _s.apyParameterTwo) = StakingUtils.calculateApyParameters(_s.minRps, _s.maxRps);
         return true;
     }
@@ -307,6 +360,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
     function setMaxRps(uint24 rps) external override onlyAdmin returns (bool) {
         require(rps >= _s.minRps, "Below min RPS");
         _s.maxRps = rps;
+        emit MaxRpsChanged(msg.sender, rps);
         (_s.apyParameterOne, _s.apyParameterTwo) = StakingUtils.calculateApyParameters(_s.minRps, _s.maxRps);
         return true;
     }
@@ -314,12 +368,14 @@ contract StakingSettings is IStakingSettings, AccessControl {
     function setNodeOwnerRewardPercent(uint16 percent) external override onlyAdmin returns (bool) {
         require(percent <= 1e2, "Exceeds limit");
         _s.nodeOwnerRewardPercent = percent;
+        emit NodeOwnerRewardPercentChanged(msg.sender, percent);
         return true;
     }
 
     function setApyBoostMinPercent(uint16 percent) external override onlyAdmin returns (bool) {
         require(percent <= 1e2, "Exceeds limit");
         _s.apyBoostStakeLongMinPercent = percent;
+        emit StakeLongApyMinBoostChanged(msg.sender, percent);
         return true;
     }
 
@@ -327,6 +383,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
         /// @dev for delta percent max is 1000%, meaning 10x boost
         require(percent <= 1e3, "Exceeds limit");
         _s.apyBoostStakeLongDeltaPercent = percent;
+        emit StakeLongApyDeltaBoostChanged(msg.sender, percent);
         return true;
     }
 
@@ -334,6 +391,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
         require(maxDays <= 1825, "Exceeds limit");
         require(maxDays >= 366, "Min 366 days");
         _s.apyBoostStakeLongMaxDays = maxDays;
+        emit StakeLongApyBoostMaxDaysChanged(msg.sender, maxDays);
         return true;
     }
 
@@ -383,6 +441,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
             true
         );
         _s.epochPenaltyRate = StakingUtils.compoundInterest(_s.dailyPenaltyRate, StakingUtils.EPOCH_PERIOD_DAYS);
+        emit PenaltyRateChanged(msg.sender, penaltyRate);
         return true;
     }
 
@@ -488,6 +547,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
 }
 
 contract Staking is
+    IStakingEvents,
     Initializable,
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -508,34 +568,6 @@ contract Staking is
     mapping(uint256 => StakingUtils.Stake) private _stakes;
     mapping(address => uint256[]) private _stakeIds;
 
-    /// @notice staker events
-    event TokensStaked(
-        address indexed sender,
-        uint256 indexed stakeId,
-        bytes32 nodeId,
-        uint256 amount,
-        uint16 stakingDays
-    );
-    event TokensUnstaked(address indexed sender, uint256 indexed stakeId, bytes32 nodeId, uint256 amount);
-    event TokensClaimed(address indexed sender, uint256 indexed stakeId, uint256 amount, uint256 lastClaimedEpoch);
-    event EpochClaimed(address indexed sender, uint256 stakeId, uint256 epoch);
-    event PenaltyApplied(address indexed sender, uint256 stakeId, uint256 penaltyAmount);
-
-    /// @notice node owner events
-    event NodeTokensClaimed(address indexed sender, bytes32 indexed nodeId, uint256 amount);
-
-    /// @notice supervisor events
-    event NodeMeasured(
-        bytes32 indexed nodeId,
-        uint24 rps,
-        uint16 penaltyDays,
-        StakingUtils.NodeSlaLevel slaLevel,
-        uint256 epoch
-    );
-
-    /// @notice admin events
-    event EmergencyTokenWithdraw(address indexed to, bytes32 reason, uint256 amount);
-
     error ExistingMeasurement(bytes32 nodeId);
     error NothingStaked(bytes32 nodeId);
 
@@ -551,10 +583,12 @@ contract Staking is
 
     function emergencyPause() external onlyAdmin {
         _pause();
+        emit EmergencyPause(msg.sender);
     }
 
     function emergencyResume() external onlyAdmin {
         _unpause();
+        emit EmergencyResume(msg.sender);
     }
 
     function emergencyWithdraw(uint256 amount, bytes32 reason) external whenPaused onlyAdmin {
@@ -757,7 +791,9 @@ contract Staking is
     }
 
     // UUPS function
-    function _authorizeUpgrade(address) internal override onlyAdmin {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {
+        emit UpgradeAuthorized(msg.sender, address(this), newImplementation);
+    }
 
     /// @dev caller function must make that all measurements are present
     function _computeFullEpochReward(

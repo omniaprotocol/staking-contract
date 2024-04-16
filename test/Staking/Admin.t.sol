@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 
 import "../Base.t.sol";
 
-contract AdminTest is Base {
+contract AdminTest is Base, IStakingSettingsEvents {
     // getters
     function testGetGlobalStakeCounter() public {
         assertEq(staking.getStakeCount(), 0);
@@ -17,6 +17,8 @@ contract AdminTest is Base {
     // pausable/unpausable
     function testEmergencyPause() public {
         vm.prank(admin);
+        vm.expectEmit(true, false, false, true, address(staking));
+        emit EmergencyPause(admin);
         staking.emergencyPause();
         assertEq(staking.paused(), true);
     }
@@ -24,6 +26,8 @@ contract AdminTest is Base {
     function testEmergencyResume() public {
         vm.startPrank(admin);
         staking.emergencyPause();
+        vm.expectEmit(true, false, false, true, address(staking));
+        emit EmergencyResume(admin);
         staking.emergencyResume();
         assertEq(staking.paused(), false);
     }
@@ -180,6 +184,16 @@ contract AdminTest is Base {
         settings.setMaxApy(sla, newApy);
     }
 
+    function testFuzzSetMaxApy(uint256 apy) public {
+        vm.assume(1 <= apy && apy <= MAX_APY);
+        vm.expectEmit(true, true, false, true, address(settings));
+        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
+        emit MaxApyChanged(admin, sla, apy);
+
+        vm.prank(admin);
+        settings.setMaxApy(sla, apy);
+    }
+
     // supervisor management
 
     function testRevertIfNotRoleAdminAddSupervisor() public {
@@ -262,6 +276,8 @@ contract AdminTest is Base {
         /// @dev max staking per node default
         vm.assume(amount <= 1e8 * 1e18 && amount > 0);
 
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit MinStakingAmountChanged(admin, amount);
         vm.prank(admin);
         settings.setMinStakingAmount(amount);
         uint16 period = EPOCH_PERIOD_DAYS;
@@ -275,6 +291,8 @@ contract AdminTest is Base {
         // default min staking and max token
         vm.assume(amount >= 1000 * ONE_TOKEN && amount < 100e6 ether);
 
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit MaxStakingPerNodeChanged(admin, amount);
         vm.prank(admin);
         settings.setMaxStakingAmountPerNode(amount);
         uint16 period = EPOCH_PERIOD_DAYS;
@@ -315,6 +333,18 @@ contract AdminTest is Base {
         _addMeasurement(epoch, NODE_1_ID, minRps, penaltyDays, sla);
     }
 
+    function testFuzzSetMinRps(uint24 rps) public {
+        vm.assume(1 <= rps && rps <= MAX_RPS);
+
+        vm.prank(admin);
+        settings.setMaxRps(MAX_RPS);
+
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit MinRpsChanged(admin, rps);
+        vm.prank(admin);
+        settings.setMinRps(rps);
+    }
+
     function testRevertIfMaxRpsBelowMinSetMaxRps() public {
         uint24 maxRps = MIN_RPS - 1;
 
@@ -338,6 +368,17 @@ contract AdminTest is Base {
         _addMeasurement(epoch, NODE_1_ID, maxRps, penaltyDays, sla);
     }
 
+    function testFuzzSetMaxRps(uint24 rps) public {
+        vm.assume(2 <= rps && rps <= MAX_RPS);
+        vm.prank(admin);
+        settings.setMinRps(1);
+
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit MaxRpsChanged(admin, rps);
+        vm.prank(admin);
+        settings.setMaxRps(rps);
+    }
+
     // penalty rate
 
     function testRevertSetPenaltyRateOutOfBounds() public {
@@ -346,7 +387,7 @@ contract AdminTest is Base {
         settings.setPenaltyRate(1e4);
     }
 
-    function testSetPenaltyRate() public {
+    function testSetPenaltyRateToMax() public {
         vm.prank(admin);
         settings.setPenaltyRate(1e4 - 1);
     }
@@ -354,6 +395,14 @@ contract AdminTest is Base {
     function testSetPenaltyRateToZero() public {
         vm.prank(admin);
         settings.setPenaltyRate(0);
+    }
+
+    function testFuzzSetPenaltyRate(uint256 penaltyRate) public {
+        vm.assume(penaltyRate <= 9999);
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit PenaltyRateChanged(admin, penaltyRate);
+        vm.prank(admin);
+        settings.setPenaltyRate(penaltyRate);
     }
 
     // node owner reward percent
@@ -368,10 +417,44 @@ contract AdminTest is Base {
         settings.setNodeOwnerRewardPercent(1e2);
     }
 
+    function testFuzzSetNodeOwnerRewardPercent(uint16 percent) public {
+        vm.assume(percent <= 1e2);
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit NodeOwnerRewardPercentChanged(admin, percent);
+        vm.prank(admin);
+        settings.setNodeOwnerRewardPercent(percent);
+    }
+
     function testRevertSetNodeOwnerRewardPercentIfAboveMax() public {
         vm.prank(admin);
         vm.expectRevert("Exceeds limit");
         settings.setNodeOwnerRewardPercent(1e2 + 1);
+    }
+
+    // APY Boost for stake Long
+
+    function testFuzzSetApyBoostMinPercent(uint16 percent) public {
+        vm.assume(percent <= 1e2);
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit StakeLongApyMinBoostChanged(admin, percent);
+        vm.prank(admin);
+        settings.setApyBoostMinPercent(percent);
+    }
+
+    function testFuzzSetApyBoostDeltaPercent(uint16 percent) public {
+        vm.assume(percent <= 1e3);
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit StakeLongApyDeltaBoostChanged(admin, percent);
+        vm.prank(admin);
+        settings.setApyBoostDeltaPercent(percent);
+    }
+
+    function testFuzzSetApyBoostMaxDays(uint16 maxDays) public {
+        vm.assume(maxDays >= 366 && maxDays <= 1825);
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit StakeLongApyBoostMaxDaysChanged(admin, maxDays);
+        vm.prank(admin);
+        settings.setApyBoostMaxDays(maxDays);
     }
 
     // other

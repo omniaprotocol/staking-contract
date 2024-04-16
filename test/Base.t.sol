@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "forge-std/Test.sol";
 import "../src/Staking.sol";
 import "../src/Token.sol";
 import "../src/ERC721.sol";
 import "./Utils.t.sol";
-import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract Base is Test {
+contract Base is Test, IStakingEvents {
     StakingSettings public settings;
     Staking public staking;
     ERC20Mock public token;
@@ -45,26 +45,8 @@ contract Base is Test {
 
     bytes32 public constant NODE_1_ID = keccak256("NODE_1");
 
-    event TokensStaked(
-        address indexed sender,
-        uint256 indexed stakeId,
-        bytes32 nodeId,
-        uint256 amount,
-        uint16 stakingDays
-    );
-    event TokensClaimed(address indexed sender, uint256 indexed stakeId, uint256 amount, uint256 lastClaimedEpoch);
-    event PenaltyApplied(address indexed sender, uint256 stakeId, uint256 penaltyAmount);
-
+    /// Standard ERC20 Transfer event
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event EpochClaimed(address indexed sender, uint256 stakeId, uint256 epoch);
-    event NodeTokensClaimed(address indexed sender, bytes32 indexed nodeId, uint256 amount);
-    event NodeMeasured(
-        bytes32 indexed nodeId,
-        uint24 rps,
-        uint16 penaltyDays,
-        StakingUtils.NodeSlaLevel slaLevel,
-        uint256 epoch
-    );
 
     function _deployERC20() internal {
         token = new ERC20Mock();
