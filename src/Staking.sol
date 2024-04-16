@@ -583,6 +583,11 @@ contract Staking is
         _;
     }
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function emergencyPause() external onlyAdmin {
         _pause();
         emit EmergencyPause(msg.sender);

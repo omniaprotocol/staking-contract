@@ -13,9 +13,26 @@ async function main() {
 
   console.info(`Upgrading proxy ${proxyAddress}`);
 
-  const Staking = await ethers.getContractFactory("Staking");
+  // Re-deploy the StakingUtils Library
+  const StakingUtilsLibrary = await ethers.getContractFactory("StakingUtils");
+  const stakingUtils = await StakingUtilsLibrary.deploy();
+  console.info("StakingUtils library: ", stakingUtils.address);
+  await stakingUtils.deployed();
+
+  const contractFactoryOptions = {
+    libraries: {
+      StakingUtils: stakingUtils.address,
+    },
+  };
+
+  const Staking = await ethers.getContractFactory(
+    "Staking",
+    contractFactoryOptions,
+  );
   await upgrades.upgradeProxy(proxyAddress, Staking, {
     kind: "uups",
+    // Explicit consent - external library being linked (LibraryUtils) is safe, does not call selfdestruct
+    unsafeAllow: ["external-library-linking"],
   });
 
   console.info("Upgrade complete");
