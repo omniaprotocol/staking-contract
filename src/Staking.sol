@@ -53,7 +53,6 @@ interface IStakingSettings {
     function changeNFTApyBoost(uint16 seekersBoost, uint16 commandersBoost, uint16 titansBoost) external returns (bool);
 
     /// @param penaltyRate is a % value and must be multiplied by 10ˆ2
-    /// todo: confirm parameter bounds
     function setPenaltyRate(uint256 penaltyRate) external returns (bool);
 
     /// @dev Returns min staking amount per stake entry and maximum staked amount per node
@@ -376,7 +375,6 @@ contract StakingSettings is IStakingSettings, AccessControl {
     }
 
     /// @param penaltyRate is a % value and must be multiplied by 10ˆ2
-    /// todo: confirm parameter bounds
     function setPenaltyRate(uint256 penaltyRate) external override onlyAdmin returns (bool) {
         require(penaltyRate <= 9999, "Rate exceeds limit");
         _s.dailyPenaltyRate = StakingUtils.getPeriodCompoundInterestRate(
@@ -1198,7 +1196,6 @@ contract Staking is
 
         bytes32 nodeId = _stakes[stakeId].nodeId;
         /// @dev check if unclaimed epochs have measurements
-        /// todo can still be improved for less iterations
         for (; epoch <= lastFinishedEpoch; epoch = epoch + 1) {
             if (_nodes[nodeId].measurements[epoch].rps == 0) {
                 break;
