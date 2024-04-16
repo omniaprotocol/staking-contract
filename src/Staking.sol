@@ -202,14 +202,15 @@ library StakingUtils {
         return timestamp + ((1 days - ((timestamp - contractStartTimestamp) % 1 days)) % 1 days);
     }
 
-    /// @notice Compound interest rate for period formula for positive rate ((1 + rate / 100) ^ (1 / periods)) - 1
-    ///                                                       negative rate 1 - ((1 - rate / 100) ^ (1 / periods))
-    /// @param rate effective rate is multipled by 10ˆ2
+    /// @notice Compound interest rate for period formula for positive rate ((1 + rate / 100) ^ (1 / periods))
+    ///                                                       negative rate ((1 - rate / 100) ^ (1 / periods))
+    /// @param rate effective rate is multipled by 10ˆ2. Example rate=500 indicates 5% rate.
     function getPeriodCompoundInterestRate(
         Prb.SD59x18 rate,
         uint256 periods,
         bool isNegative
     ) external pure returns (Prb.SD59x18) {
+        /// @dev percent = rate / 100
         Prb.SD59x18 percent = Prb.div(rate, Prb.convert(10 ** 4));
         Prb.SD59x18 power = Prb.div(StakingUtils.ONE, Prb.convert(int256(periods)));
 
@@ -240,12 +241,13 @@ library StakingUtils {
         return (paramOne, paramTwo);
     }
 
+    /// @dev Returns the number of remaining days between "timestamp" and end of epoch referenced by "timestampEpoch".
     function getDaysUntilEpochEnd(
         uint256 timestamp,
         uint256 timestampEpoch,
         uint256 contractStartTimestamp
     ) external pure returns (uint256) {
-        /// @dev epochEndTimestamp - timestamp / 1 days ;
+        /// @dev (epochEndTimestamp - timestamp) / 1 days
         return (timestampEpoch * StakingUtils.EPOCH_PERIOD_SECONDS + contractStartTimestamp - timestamp) / 1 days;
     }
 }
