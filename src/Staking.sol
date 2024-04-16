@@ -969,7 +969,10 @@ contract Staking is
 
         _stakes[stakeId].lastClaimedEpoch = latestClaimableEpoch;
 
-        for (uint256 epoch = stakeLastClaimedEpoch + 1; epoch <= latestClaimableEpoch; epoch = epoch + 1) {
+        /// @dev If no epoch has been claimed so far, then first one claiming would be stake's start epoch, regardless if partial or full. Otherwise start with stakeLastClaimedEpoch + 1
+        uint256 startClaimingsEpochsFrom = (stakeLastClaimedEpoch == 0) ? stakeFirstEpoch : stakeLastClaimedEpoch + 1;
+
+        for (uint256 epoch = startClaimingsEpochsFrom; epoch <= latestClaimableEpoch; epoch = epoch + 1) {
             emit EpochClaimed(msg.sender, stakeId, epoch);
         }
 
