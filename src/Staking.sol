@@ -685,7 +685,13 @@ contract Staking is
         uint256 stakeAmount = _stakes[stakeId].amount;
         bytes32 stakeNodeId = _stakes[stakeId].nodeId;
 
+        /// @dev First update amount in stake entry to 0. After unstake amount will always be 0, regardless if user had penalties and got back less tokens than initially staked.
+        _stakes[stakeId].amount = 0;
+
+        /// @dev Then mark stake as withdrawn/unstaked.
         _stakes[stakeId].withdrawnTimestamp = StakingUtils.toUint32(block.timestamp);
+
+        /// @dev Also update amount stake per node used in max amount per node restrictions.
         _nodes[stakeNodeId].stakedAmount -= stakeAmount;
 
         IERC20(_token).safeTransfer(
