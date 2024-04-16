@@ -629,7 +629,7 @@ contract Staking is
         bytes32 nodeId,
         uint256 amount,
         uint16 stakingDays
-    ) external whenNotPaused nonReentrant returns (uint256) {
+    ) external nonReentrant whenNotPaused returns (uint256) {
         require(staker != address(0), "Invalid address");
         (uint256 minStakingAmount, uint256 maxStakingAmountPerNode) = IStakingSettings(_settings)
             .getStakingAmountRestrictions();
@@ -646,7 +646,7 @@ contract Staking is
         bytes32 nodeId,
         uint256 amount,
         uint16 stakingDays
-    ) external whenNotPaused nonReentrant returns (uint256) {
+    ) external nonReentrant whenNotPaused returns (uint256) {
         (uint256 minStakingAmount, uint256 maxStakingAmountPerNode) = IStakingSettings(_settings)
             .getStakingAmountRestrictions();
         require(amount >= minStakingAmount, "Amount too small");
@@ -657,7 +657,7 @@ contract Staking is
         return _stakeTokens(msg.sender, nodeId, amount, stakingDays);
     }
 
-    function unstakeTokens(uint256 stakeId) external whenNotPaused nonReentrant {
+    function unstakeTokens(uint256 stakeId) external nonReentrant whenNotPaused {
         require(_stakes[stakeId].staker == msg.sender, "Not authorized");
         require(_stakes[stakeId].withdrawnTimestamp == 0, "Already withdrawn");
 
@@ -689,7 +689,7 @@ contract Staking is
     }
 
     /// @dev safety method in case the user wants to claim limited amount of epochs (can be removed if claim(uint256 stakeId) is sufficient)
-    function claim(uint256 stakeId, uint256 epochs) external whenNotPaused nonReentrant {
+    function claim(uint256 stakeId, uint256 epochs) external nonReentrant whenNotPaused {
         require(epochs > 0, "Epoch count too low");
         require(_stakes[stakeId].staker == msg.sender, "Not authorized");
         require(_stakes[stakeId].withdrawnTimestamp == 0, "Already withdrawn");
@@ -708,7 +708,7 @@ contract Staking is
         }
     }
 
-    function claim(uint256 stakeId) external whenNotPaused nonReentrant {
+    function claim(uint256 stakeId) external nonReentrant whenNotPaused {
         require(_stakes[stakeId].staker == msg.sender, "Not authorized");
         require(_stakes[stakeId].withdrawnTimestamp == 0, "Already withdrawn");
 
@@ -722,7 +722,7 @@ contract Staking is
         }
     }
 
-    function claim(bytes32 nodeId) external whenNotPaused nonReentrant {
+    function claim(bytes32 nodeId) external nonReentrant whenNotPaused {
         uint256 uNodeId = uint256(nodeId);
         address owner = address(uint160(uNodeId >> 96));
         uint256 claimableAmount = _nodes[nodeId].claimableAmount;
