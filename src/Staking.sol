@@ -197,8 +197,9 @@ library StakingUtils {
         return Prb.pow(rate, Prb.convert(int256(periods)));
     }
 
-    function getNextDayStartTimestamp(uint32 timestamp, uint32 contractStartTimestamp) external pure returns (uint32) {
-        /// @dev timestamp + secondsTillNextDayStart
+    /// @dev Computes the start of stake depending on timestamp when stake is created.
+    /// Returns timestamp of next day start, unless the input is exactly multiple of 1 day since contractStartTimestamp when same input is returned
+    function getStakeStartTimestamp(uint32 timestamp, uint32 contractStartTimestamp) external pure returns (uint32) {
         return timestamp + ((1 days - ((timestamp - contractStartTimestamp) % 1 days)) % 1 days);
     }
 
@@ -873,7 +874,7 @@ contract Staking is
         _stakeIdCounter += 1;
         uint256 stakeIdCounter = _stakeIdCounter;
 
-        uint32 startTimestamp = StakingUtils.getNextDayStartTimestamp(
+        uint32 startTimestamp = StakingUtils.getStakeStartTimestamp(
             StakingUtils.toUint32(block.timestamp),
             StakingUtils.toUint32(_contractStartTimestamp)
         );
