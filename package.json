@@ -8,15 +8,17 @@
     "prettify": "yarn run prettier --config .prettierrc --write .",
     "lint": "yarn run solhint --config .solhint.json ./src/**/*.sol ./test/**/*.sol ./script/**/*.sol",
     "deploy:local": "npx hardhat run --network local hardhat-scripts/create-staking.js",
-    "upgrade:local": "hardhat run --network hardhat hardhat-scripts/upgrade-staking.js",
+    "fund": "hardhat run --network local hardhat-scripts/local-fund-wallets.js",
+    "fastforward-time": "hardhat run --network local hardhat-scripts/hardhat-node-fast-forward-time.js",
+    "prepare-upgrade:local": "hardhat run --network local hardhat-scripts/prepare-upgrade-staking.js",
+    "propose-upgrade:local": "hardhat run --network local hardhat-scripts/propose-upgrade-staking.js",
+    "execute-upgrade:local": "hardhat run --network local hardhat-scripts/execute-upgrade-staking.js",
     "deploy:sepolia": "hardhat run --network sepolia hardhat-scripts/create-staking.js",
-    "stake:sepolia": "STAKING='ADDRESS_HERE' TOKEN='ADDRESS_HERE' hardhat run --network sepolia hardhat-scripts/stake.js",
-    "get-stake:sepolia": "STAKING='ADDRESS_HERE' hardhat run --network sepolia hardhat-scripts/get-stake.js ",
-    "upgrade:sepolia": "STAKING='ADDRESS_HERE' hardhat run --network sepolia hardhat-scripts/upgrade-staking.js",
-    "deploy:goerli": "hardhat run --network goerli hardhat-scripts/create-staking.js",
-    "stake:goerli": "STAKING='ADDRESS_HERE' TOKEN='ADDRESS_HERE' hardhat run --network goerli hardhat-scripts/stake.js",
-    "get-stake:goerli": "STAKING=ADDRESS_HERE hardhat run --network goerli hardhat-scripts/get-stake.js",
-    "upgrade:goerli": "STAKING='ADDRESS_HERE'hardhat run --network goerli hardhat-scripts/upgrade-staking.js"
+    "stake:sepolia": "STAKING='0x...' TOKEN='0x...' hardhat run --network sepolia hardhat-scripts/stake.js",
+    "get-stake:sepolia": "STAKING='0x...' hardhat run --network sepolia hardhat-scripts/get-stake.js ",
+    "prepare-upgrade:sepolia": "hardhat run --network sepolia hardhat-scripts/prepare-upgrade-staking.js",
+    "propose-upgrade:sepolia": "hardhat run --network sepolia hardhat-scripts/propose-upgrade-staking.js",
+    "execute-upgrade:sepolia": "hardhat run --network sepolia hardhat-scripts/execute-upgrade-staking.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-foundry": "^1.0.1",
@@ -32,7 +34,7 @@
     "solhint": "^3.4.1"
   },
   "lint-staged": {
-    "*.sol": "yarn run solhint --config .solhint.json",
+    "*.sol": "yarn run solhint --config .solhint.json --ignore-path .solhintignore",
     "{*.{sol,json},.prettierrc}": "prettier --config .prettierrc --write"
   }
 }

@@ -50,7 +50,7 @@ contract StakingTest is Base {
         Staking staking2_ = new Staking();
         ERC1967Proxy proxy2 = new ERC1967Proxy(address(staking2_), "");
         Staking staking2 = Staking(address(proxy2));
-        staking2.initialize(address(feeOnTransferToken), address(settings));
+        staking2.initialize(address(feeOnTransferToken), address(settings), address(timelockAdmin));
 
         // Try stake from Alice account
         uint256 amount = ONE_TOKEN * 1e4;

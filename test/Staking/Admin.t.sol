@@ -15,7 +15,21 @@ contract AdminTest is Base, IStakingSettingsEvents {
     }
 
     // pausable/unpausable
-    function testEmergencyPause() public {
+
+    function testEmergencyPauseFromMultisig() public {
+        bytes memory calldata_ = abi.encodeWithSignature("emergencyPause()");
+        vm.prank(multisig);
+        _timelockSchedule(address(staking), calldata_, TWO_DAYS_IN_SECONDS);
+        _fastforward(TWO_DAYS_IN_SECONDS);
+
+        vm.expectEmit(true, false, false, true, address(staking));
+        emit EmergencyPause(admin);
+        vm.prank(multisig);
+        _timelockExecute(address(staking), calldata_);
+        assertEq(staking.paused(), true);
+    }
+
+    function testEmergencyPauseFromAdmin() public {
         vm.prank(admin);
         vm.expectEmit(true, false, false, true, address(staking));
         emit EmergencyPause(admin);
@@ -23,7 +37,24 @@ contract AdminTest is Base, IStakingSettingsEvents {
         assertEq(staking.paused(), true);
     }
 
-    function testEmergencyResume() public {
+    function testEmergencyResumeFromMultisig() public {
+        // Pre-requisites
+        vm.prank(admin);
+        staking.emergencyPause();
+
+        bytes memory calldata_ = abi.encodeWithSignature("emergencyResume()");
+        vm.prank(multisig);
+        _timelockSchedule(address(staking), calldata_, TWO_DAYS_IN_SECONDS);
+        _fastforward(TWO_DAYS_IN_SECONDS);
+
+        vm.expectEmit(true, false, false, true, address(staking));
+        emit EmergencyResume(admin);
+        vm.prank(multisig);
+        _timelockExecute(address(staking), calldata_);
+        assertEq(staking.paused(), false);
+    }
+
+    function testEmergencyResumeFromAdmin() public {
         vm.startPrank(admin);
         staking.emergencyPause();
         vm.expectEmit(true, false, false, true, address(staking));
@@ -129,150 +160,122 @@ contract AdminTest is Base, IStakingSettingsEvents {
         staking.emergencyWithdraw(ONE_TOKEN * 1e6 * 5, reason); // 5M tokens
     }
 
-    function testEmergencyWithdraw() public {
+    function testFuzzEmergencyWithdrawFromMultisig(uint256 amount) public {
+        vm.assume(ONE_TOKEN < amount && amount <= ONE_TOKEN * 1e6 * 5);
+
+        // Pre-requisites
+        vm.prank(admin);
+        staking.emergencyPause();
+
+        uint256 balanceBefore = token.balanceOf(admin);
+        bytes32 reason = 0x00;
+
+        bytes memory calldata_ = abi.encodeWithSignature("emergencyWithdraw(uint256,bytes32)", amount, reason);
+        vm.prank(multisig);
+        _timelockSchedule(address(staking), calldata_, TWO_DAYS_IN_SECONDS);
+        _fastforward(TWO_DAYS_IN_SECONDS);
+
+        vm.prank(multisig);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit EmergencyTokenWithdraw(admin, reason, amount);
+        _timelockExecute(address(staking), calldata_);
+
+        // Make sure balances reflect that
+        assertEq(token.balanceOf(admin), balanceBefore + amount);
+    }
+
+    function testFuzzEmergencyWithdrawFromAdmin(uint256 amount) public {
+        vm.assume(ONE_TOKEN < amount && amount <= ONE_TOKEN * 1e6 * 5);
         vm.startPrank(admin);
         staking.emergencyPause();
         uint256 balanceBefore = token.balanceOf(admin);
         bytes32 reason = 0x00;
-        staking.emergencyWithdraw(ONE_TOKEN * 1e6 * 5, reason); // 5M tokens
-        assertEq(token.balanceOf(admin), balanceBefore + uint256(ONE_TOKEN * 1e6 * 5));
-    }
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit EmergencyTokenWithdraw(admin, reason, amount);
+        staking.emergencyWithdraw(amount, reason); // 5M tokens
 
-    // max apy
-
-    function testRevertIfNotAdminSetMaxApy() public {
-        vm.expectRevert("Caller is not an admin");
-        settings.setMaxApy(StakingUtils.NodeSlaLevel.Silver, 100);
-    }
-
-    function testRevertIfNotAdminSetMaxRps() public {
-        vm.expectRevert("Caller is not an admin");
-        settings.setMaxRps(MAX_RPS);
-    }
-
-    function testRevertIfApyExceedMaxSetMaxApy() public {
-        uint256 newApy = MAX_APY + 1;
-        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
-
-        vm.prank(admin);
-        vm.expectRevert("Invalid APY");
-        settings.setMaxApy(sla, newApy);
-    }
-
-    function testRevertIfApyBelowMinSetMaxApy() public {
-        uint256 newApy = 0;
-        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
-
-        vm.prank(admin);
-        vm.expectRevert("Invalid APY");
-        settings.setMaxApy(sla, newApy);
-    }
-
-    function testSetMaxApyToMin() public {
-        uint256 newApy = 1;
-        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
-
-        vm.prank(admin);
-        settings.setMaxApy(sla, newApy);
-    }
-
-    function testSetMaxApyToMax() public {
-        uint256 newApy = MAX_APY;
-        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
-
-        vm.prank(admin);
-        settings.setMaxApy(sla, newApy);
-    }
-
-    function testFuzzSetMaxApy(uint256 apy) public {
-        vm.assume(1 <= apy && apy <= MAX_APY);
-        vm.expectEmit(true, true, false, true, address(settings));
-        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Silver;
-        emit MaxApyChanged(admin, sla, apy);
-
-        vm.prank(admin);
-        settings.setMaxApy(sla, apy);
+        // Make sure balances reflect that
+        assertEq(token.balanceOf(admin), balanceBefore + amount);
     }
 
     // supervisor management
 
-    function testRevertIfNotRoleAdminAddSupervisor() public {
+    function testRevertIfNotAdminAddSupervisor() public {
         vm.expectRevert(
             abi.encodePacked(
                 "AccessControl: account ",
                 StringsUpgradeable.toHexString(address(0x0000000000000000000000000000000000000001)),
                 " is missing role ",
-                StringsUpgradeable.toHexString(uint256(DEFAULT_ADMIN_ROLE), 32)
+                StringsUpgradeable.toHexString(uint256(STAKING_ADMIN_ROLE), 32)
             )
         );
         vm.prank(address(1));
         staking.grantRole(SUPERVISOR_ROLE, alice);
     }
 
-    function testRevertIfNotRoleAdminRemoveSupervisor() public {
+    function testRevertIfNotAdminRemoveSupervisor() public {
         vm.expectRevert(
             abi.encodePacked(
                 "AccessControl: account ",
                 StringsUpgradeable.toHexString(address(0x0000000000000000000000000000000000000001)),
                 " is missing role ",
-                StringsUpgradeable.toHexString(uint256(DEFAULT_ADMIN_ROLE), 32)
+                StringsUpgradeable.toHexString(uint256(STAKING_ADMIN_ROLE), 32)
             )
         );
         vm.prank(address(1));
         staking.revokeRole(SUPERVISOR_ROLE, alice);
     }
 
-    function testRevertAdminCantGrantSupervisor() public {
-        vm.prank(admin);
+    function testRevertStakingCantGrantOtherAdmins() public {
+        vm.prank(address(timelockAdmin));
         vm.expectRevert(
             abi.encodePacked(
                 "AccessControl: account ",
-                StringsUpgradeable.toHexString(admin),
+                StringsUpgradeable.toHexString(address(timelockAdmin)),
                 " is missing role ",
                 StringsUpgradeable.toHexString(uint256(DEFAULT_ADMIN_ROLE), 32)
             )
         );
-        staking.grantRole(SUPERVISOR_ROLE, alice);
+        staking.grantRole(STAKING_ADMIN_ROLE, alice);
     }
 
-    function testRevertAdminCantRevokeSupervisor() public {
-        vm.prank(admin);
-        vm.expectRevert(
-            abi.encodePacked(
-                "AccessControl: account ",
-                StringsUpgradeable.toHexString(admin),
-                " is missing role ",
-                StringsUpgradeable.toHexString(uint256(DEFAULT_ADMIN_ROLE), 32)
-            )
-        );
-        staking.revokeRole(SUPERVISOR_ROLE, alice);
+    function testAdminCanRevokeSupervisor() public {
+        /// @notice admin is the same as address(timelockAdmin)
+        vm.prank(address(timelockAdmin));
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit RoleRevoked(SUPERVISOR_ROLE, supervisor, address(timelockAdmin));
+        staking.revokeRole(SUPERVISOR_ROLE, supervisor);
     }
 
-    function testGrantSupervisor() public {
-        vm.prank(roleAdmin);
+    function testAdminCanGrantSupervisor() public {
+        vm.prank(address(timelockAdmin));
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit RoleGranted(SUPERVISOR_ROLE, alice, address(timelockAdmin));
         staking.grantRole(SUPERVISOR_ROLE, alice);
         assertEq(staking.hasRole(SUPERVISOR_ROLE, alice), true);
     }
 
-    function testRevokeSupervisor() public {
-        vm.prank(roleAdmin);
-        staking.revokeRole(SUPERVISOR_ROLE, supervisor);
-        assertEq(staking.hasRole(SUPERVISOR_ROLE, supervisor), false);
-    }
-
     // min staking
 
-    function testRevertIfNotAdminSetMinStaking() public {
-        vm.expectRevert("Caller is not an admin");
-        settings.setMinStakingAmount(100);
+    function testFuzzSetMinStakingFromMultisig(uint256 amount) public {
+        /// @dev max staking per node default
+        vm.assume(amount <= 1e8 * 1e18 && amount > 0);
+
+        bytes memory calldata_ = abi.encodeWithSignature("setMinStakingAmount(uint256)", amount);
+        vm.prank(multisig);
+        _timelockSchedule(address(settings), calldata_, TWO_DAYS_IN_SECONDS);
+        _fastforward(TWO_DAYS_IN_SECONDS);
+
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit MinStakingAmountChanged(admin, amount);
+        vm.prank(multisig);
+        _timelockExecute(address(settings), calldata_);
+
+        uint16 period = EPOCH_PERIOD_DAYS;
+        _stakeTokens(alice, NODE_1_ID, amount, period);
     }
 
-    function testRevertIfNotAdminSetMinRps() public {
-        vm.expectRevert("Caller is not an admin");
-        settings.setMinRps(MIN_RPS);
-    }
-
-    function testFuzzSetMinStaking(uint256 amount) public {
+    function testFuzzSetMinStakingFromAdmin(uint256 amount) public {
         /// @dev max staking per node default
         vm.assume(amount <= 1e8 * 1e18 && amount > 0);
 
@@ -300,184 +303,10 @@ contract AdminTest is Base, IStakingSettingsEvents {
         _stakeTokens(alice, NODE_1_ID, amount, period);
     }
 
-    // min/max rps
-
-    function testRevertIfMinRpsBelow1() public {
-        uint24 minRps = 0;
-
-        vm.prank(admin);
-        vm.expectRevert("Exceeds max RPS or below 1");
-        settings.setMinRps(minRps);
-    }
-
-    function testRevertIfMinRpsAboveMaxSetMinRps() public {
-        uint24 minRps = MAX_RPS + 1;
-
-        vm.prank(admin);
-        vm.expectRevert("Exceeds max RPS or below 1");
-        settings.setMinRps(minRps);
-    }
-
-    function testSetMinRps() public {
-        uint24 minRps = MIN_RPS - 1;
-        uint256 epoch = 1;
-        uint16 penaltyDays = 0;
-        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Diamond;
-
-        vm.prank(admin);
-        settings.setMinRps(minRps);
-
-        _stakeTokens(alice, NODE_1_ID, 1e21, 28);
-
-        _fastforward(30 days);
-        _addMeasurement(epoch, NODE_1_ID, minRps, penaltyDays, sla);
-    }
-
-    function testRevertMinRpsEqualMaxRps() public {
-        uint24 rps = 100;
-        vm.startPrank(admin);
-        settings.setMinRps(rps);
-        vm.expectRevert("Below min RPS");
-        settings.setMaxRps(rps);
-        rps = 200;
-        settings.setMaxRps(rps);
-        vm.expectRevert("Exceeds max RPS or below 1");
-        settings.setMinRps(rps);
-        vm.stopPrank();
-    }
-
-    function testFuzzSetMinRps(uint24 rps) public {
-        vm.assume(1 <= rps && rps < MAX_RPS);
-
-        vm.prank(admin);
-        settings.setMaxRps(MAX_RPS);
-
-        vm.expectEmit(true, true, false, true, address(settings));
-        emit MinRpsChanged(admin, rps);
-        vm.prank(admin);
-        settings.setMinRps(rps);
-    }
-
-    function testRevertIfMaxRpsBelowMinSetMaxRps() public {
-        uint24 maxRps = MIN_RPS - 1;
-
-        vm.prank(admin);
-        vm.expectRevert("Below min RPS");
-        settings.setMaxRps(maxRps);
-    }
-
-    function testSetMaxRps() public {
-        uint24 maxRps = 2 ** 24 - 1;
-        uint256 epoch = 1;
-        uint16 penaltyDays = 0;
-        StakingUtils.NodeSlaLevel sla = StakingUtils.NodeSlaLevel.Diamond;
-
-        vm.prank(admin);
-        settings.setMaxRps(maxRps);
-
-        _stakeTokens(alice, NODE_1_ID, 1e21, 28);
-
-        _fastforward(30 days);
-        _addMeasurement(epoch, NODE_1_ID, maxRps, penaltyDays, sla);
-    }
-
-    function testFuzzSetMaxRps(uint24 rps) public {
-        vm.assume(2 <= rps && rps <= MAX_RPS);
-        vm.prank(admin);
-        settings.setMinRps(1);
-
-        vm.expectEmit(true, true, false, true, address(settings));
-        emit MaxRpsChanged(admin, rps);
-        vm.prank(admin);
-        settings.setMaxRps(rps);
-    }
-
-    // penalty rate
-
-    function testRevertSetPenaltyRateOutOfBounds() public {
-        vm.prank(admin);
-        vm.expectRevert("Rate exceeds limit");
-        settings.setPenaltyRate(1e4);
-    }
-
-    function testSetPenaltyRateToMax() public {
-        vm.prank(admin);
-        settings.setPenaltyRate(1e4 - 1);
-    }
-
-    function testSetPenaltyRateToZero() public {
-        vm.prank(admin);
-        settings.setPenaltyRate(0);
-    }
-
-    function testFuzzSetPenaltyRate(uint256 penaltyRate) public {
-        vm.assume(penaltyRate <= 9999);
-        vm.expectEmit(true, true, false, true, address(settings));
-        emit PenaltyRateChanged(admin, penaltyRate);
-        vm.prank(admin);
-        settings.setPenaltyRate(penaltyRate);
-    }
-
-    // node owner reward percent
-
-    function testSetNodeOwnerRewardPercentToZero() public {
-        vm.prank(admin);
-        settings.setNodeOwnerRewardPercent(0);
-    }
-
-    function testSetNodeOwnerRewardPercentToMax() public {
-        vm.prank(admin);
-        settings.setNodeOwnerRewardPercent(1e2);
-    }
-
-    function testFuzzSetNodeOwnerRewardPercent(uint16 percent) public {
-        vm.assume(percent <= 1e2);
-        vm.expectEmit(true, true, false, true, address(settings));
-        emit NodeOwnerRewardPercentChanged(admin, percent);
-        vm.prank(admin);
-        settings.setNodeOwnerRewardPercent(percent);
-    }
-
-    function testRevertSetNodeOwnerRewardPercentIfAboveMax() public {
-        vm.prank(admin);
-        vm.expectRevert("Exceeds limit");
-        settings.setNodeOwnerRewardPercent(1e2 + 1);
-    }
-
-    // APY Boost for stake Long
-
-    function testFuzzSetApyBoostMinPercent(uint16 percent) public {
-        vm.assume(percent <= 1e2);
-        vm.expectEmit(true, true, false, true, address(settings));
-        emit StakeLongApyMinBoostChanged(admin, percent);
-        vm.prank(admin);
-        settings.setApyBoostMinPercent(percent);
-    }
-
-    function testFuzzSetApyBoostDeltaPercent(uint16 percent) public {
-        vm.assume(percent <= 1e3);
-        vm.expectEmit(true, true, false, true, address(settings));
-        emit StakeLongApyDeltaBoostChanged(admin, percent);
-        vm.prank(admin);
-        settings.setApyBoostDeltaPercent(percent);
-    }
-
-    function testFuzzSetApyBoostMaxDays(uint16 maxDays) public {
-        vm.assume(maxDays >= 366 && maxDays <= 1825);
-        vm.expectEmit(true, true, false, true, address(settings));
-        emit StakeLongApyBoostMaxDaysChanged(admin, maxDays);
-        vm.prank(admin);
-        settings.setApyBoostMaxDays(maxDays);
-    }
-
     // other
 
     function testDefaultAdminStaking() public {
-        assertEq(staking.hasRole(ADMIN_ROLE, admin), true);
-    }
-
-    function testDefaultAdminSettings() public {
-        assertEq(settings.hasRole(ADMIN_ROLE, admin), true);
+        assertEq(staking.hasRole(STAKING_ADMIN_ROLE, address(timelockAdmin)), true);
     }
 
     function testVerifyStartEpoch() public {

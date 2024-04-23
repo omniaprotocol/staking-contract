@@ -243,7 +243,7 @@ contract MeasurementTest is Base {
         staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
     }
 
-    function testRevertIfDuplicateNodeId() public {
+    function testRevertIfDuplicateNodeIdAndMeasurement() public {
         uint256 epoch = 1;
 
         uint24[] memory rps = new uint24[](2);
@@ -271,7 +271,7 @@ contract MeasurementTest is Base {
         staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
     }
 
-    function testRevertIfDuplicateNodeIdAfterSubmission() public {
+    function testRevertIfDuplicateNodeIdAndMeasurementAfterSubmission() public {
         uint256 epoch = 1;
 
         uint24[] memory rps = new uint24[](1);
@@ -293,6 +293,154 @@ contract MeasurementTest is Base {
         vm.startPrank(supervisor);
         staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
         vm.expectRevert(abi.encodeWithSelector(Staking.ExistingMeasurement.selector, NODE_1_ID));
+        staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
+    }
+
+    function testOverrideRpsMeasurementAfterSubmission() public {
+        uint256 epoch = 1;
+
+        uint24[] memory rps = new uint24[](1);
+        rps[0] = MAX_RPS;
+
+        uint16[] memory penaltyDays = new uint16[](1);
+        penaltyDays[0] = 0;
+
+        uint8[] memory sla = new uint8[](1);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
+
+        bytes32[] memory nodeIds = new bytes32[](1);
+        nodeIds[0] = NODE_1_ID;
+
+        _stakeTokens(alice, NODE_1_ID, 1e21, 28);
+
+        _fastforward(28 days);
+
+        vm.startPrank(supervisor);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasured(NODE_1_ID, rps[0], penaltyDays[0], StakingUtils.NodeSlaLevel(sla[0]), epoch);
+        staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
+
+        /// @dev hypothetical scenario - fix wrong rps
+        rps[0] = MAX_RPS / 2;
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasurementRpsChanged(NODE_1_ID, MAX_RPS, rps[0], epoch);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasured(NODE_1_ID, rps[0], penaltyDays[0], StakingUtils.NodeSlaLevel(sla[0]), epoch);
+        staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
+    }
+
+    function testOverrideSlaMeasurementAfterSubmission() public {
+        uint256 epoch = 1;
+
+        uint24[] memory rps = new uint24[](1);
+        rps[0] = MAX_RPS;
+
+        uint16[] memory penaltyDays = new uint16[](1);
+        penaltyDays[0] = 0;
+
+        uint8[] memory sla = new uint8[](1);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
+
+        bytes32[] memory nodeIds = new bytes32[](1);
+        nodeIds[0] = NODE_1_ID;
+
+        _stakeTokens(alice, NODE_1_ID, 1e21, 28);
+
+        _fastforward(28 days);
+
+        vm.startPrank(supervisor);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasured(NODE_1_ID, rps[0], penaltyDays[0], StakingUtils.NodeSlaLevel(sla[0]), epoch);
+        staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
+
+        /// @dev hypothetical scenario - fix wrong SLA
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Silver);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasurementSlaChanged(
+            NODE_1_ID,
+            StakingUtils.NodeSlaLevel.Diamond,
+            StakingUtils.NodeSlaLevel(sla[0]),
+            epoch
+        );
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasured(NODE_1_ID, rps[0], penaltyDays[0], StakingUtils.NodeSlaLevel(sla[0]), epoch);
+        staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
+    }
+
+    function testOverridePenaltyDaysMeasurementAfterSubmission() public {
+        uint256 epoch = 1;
+
+        uint24[] memory rps = new uint24[](1);
+        rps[0] = MAX_RPS;
+
+        uint16[] memory penaltyDays = new uint16[](1);
+        penaltyDays[0] = 0;
+
+        uint8[] memory sla = new uint8[](1);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
+
+        bytes32[] memory nodeIds = new bytes32[](1);
+        nodeIds[0] = NODE_1_ID;
+
+        _stakeTokens(alice, NODE_1_ID, 1e21, 28);
+
+        _fastforward(28 days);
+
+        vm.startPrank(supervisor);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasured(NODE_1_ID, rps[0], penaltyDays[0], StakingUtils.NodeSlaLevel(sla[0]), epoch);
+        staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
+
+        /// @dev hypothetical scenario - fix wrong penalty days
+        penaltyDays[0] = EPOCH_PERIOD_DAYS;
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasurementPenaltyDaysChanged(NODE_1_ID, 0, penaltyDays[0], epoch);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasured(NODE_1_ID, rps[0], penaltyDays[0], StakingUtils.NodeSlaLevel(sla[0]), epoch);
+        staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
+    }
+
+    function testOverrideAllMeasurementAfterSubmission() public {
+        uint256 epoch = 1;
+
+        uint24[] memory rps = new uint24[](1);
+        rps[0] = MAX_RPS;
+
+        uint16[] memory penaltyDays = new uint16[](1);
+        penaltyDays[0] = 0;
+
+        uint8[] memory sla = new uint8[](1);
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Diamond);
+
+        bytes32[] memory nodeIds = new bytes32[](1);
+        nodeIds[0] = NODE_1_ID;
+
+        _stakeTokens(alice, NODE_1_ID, 1e21, 28);
+
+        _fastforward(28 days);
+
+        vm.startPrank(supervisor);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasured(NODE_1_ID, rps[0], penaltyDays[0], StakingUtils.NodeSlaLevel(sla[0]), epoch);
+        staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
+
+        /// @dev hypothetical scenario - fix wrong measurements
+        rps[0] = MAX_RPS / 2;
+        sla[0] = uint8(StakingUtils.NodeSlaLevel.Silver);
+        penaltyDays[0] = EPOCH_PERIOD_DAYS;
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasurementSlaChanged(
+            NODE_1_ID,
+            StakingUtils.NodeSlaLevel.Diamond,
+            StakingUtils.NodeSlaLevel(sla[0]),
+            epoch
+        );
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasurementRpsChanged(NODE_1_ID, MAX_RPS, rps[0], epoch);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasurementPenaltyDaysChanged(NODE_1_ID, 0, penaltyDays[0], epoch);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit NodeMeasured(NODE_1_ID, rps[0], penaltyDays[0], StakingUtils.NodeSlaLevel(sla[0]), epoch);
         staking.addMeasurements(epoch, nodeIds, rps, penaltyDays, sla);
     }
 

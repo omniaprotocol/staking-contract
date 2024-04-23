@@ -51,9 +51,11 @@ forge test
 
 ### <b>Hardhat</b>
 
-./hardhat-scripts folder contain both initial deployment (creat-staking.js) and upgrade (upgrade-staking.js) scripts. Hardhat is the recommended deployment method by openZeppelin as it makes extra checks when upgrading that there wouldn't be conflicts and the contract being upgraded to is valid.
+./hardhat-scripts folder contain both initial deployment (create-staking.js) and upgrade (prepare-upgrade-staking.js, propose-upgrade-staking.js and execute-upgrade-staking.js) scripts. Hardhat is the recommended deployment method by openZeppelin as it makes extra checks when upgrading that there wouldn't be conflicts and the contract being upgraded to is valid.
 
-To deploy the initial staking contract user:
+### To deploy the initial staking contract user:
+
+General Obs: if TOKEN | GNOSIS_SAFE | TIMELOCK_ADMIN environment variables are not set then they will deployed by the script.
 
 Local hardhat network
 
@@ -67,18 +69,43 @@ Sepolia test network
 yarn run deploy:sepolia
 ```
 
-To upgrade to a new contract version:
+### To upgrade to a new contract version:
 
-Local hardhat network
+#### Local hardhat network
 
 ```sh
-yarn run upgrade:local
+< Set GNOSIS_SAFE, TOKEN, TIMELOCK_ADMIN and STAKING env variables with deployed addresses >
+
+yarn run prepare-upgrade:local
+
+< Set NEW_IMPLEMENTATION environment variable with deployed address of new implementation >
+
+yarn run fund
+
+yarn run propose-upgrade:local
+
+yarn run fastforward-time
+
+yarn run execute-upgrade:local
 ```
 
-Sepolia test network
+
+#### Sepolia test network
+
+Make sure wallets have Sepolia ETH.
 
 ```sh
-yarn run upgrade:sepolia
+< Set GNOSIS_SAFE, TOKEN, TIMELOCK_ADMIN and STAKING env variables with deployed addresses >
+
+yarn run prepare-upgrade:local
+
+< Set NEW_IMPLEMENTATION environment variable with deployed address of new implementation >
+
+yarn run propose-upgrade:sepolia
+
+< Wait 48h>
+
+yarn run execute-upgrade:sepolia
 ```
 
 ### <b>Forge</b>
@@ -91,13 +118,12 @@ forge script [options] path [args...]
 
 More info on options and args [HERE](https://book.getfoundry.sh/reference/forge/forge-script).
 
-### <b>config.secret.js</b>
+### <b>config.secret.js</b> 
 
 Expected format is this
 
 ```sh
 module.exports = {
-  testnetPrivateKey: "....",
 };
 
 ```
@@ -143,5 +169,3 @@ Known issues:
 - Unable to understand proxy "initialize" function, so need to convert initialize to constructor function.
 
 ### Deployed addresses
-
---

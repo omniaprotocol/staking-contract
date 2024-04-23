@@ -15,8 +15,9 @@ docs/
 .env
 config.secret.js
 
-# Dependencies
+# Dependencies and package manager
 **/node_modules/
+yarn-error.log
 
 # IDE
 .vscode

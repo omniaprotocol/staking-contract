@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
+import "openzeppelin-contracts/contracts/utils/Address.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
@@ -58,6 +59,25 @@ interface IStakingEvents {
         uint24 rps,
         uint16 penaltyDays,
         StakingUtils.NodeSlaLevel slaLevel,
+        uint256 epoch
+    );
+
+    /// @notice supervisor events
+    event NodeMeasurementRpsChanged(bytes32 indexed nodeId, uint24 oldRps, uint24 newRps, uint256 epoch);
+
+    /// @notice supervisor events
+    event NodeMeasurementSlaChanged(
+        bytes32 indexed nodeId,
+        StakingUtils.NodeSlaLevel oldSlaLevel,
+        StakingUtils.NodeSlaLevel newSlaLevel,
+        uint256 epoch
+    );
+
+    /// @notice supervisor events
+    event NodeMeasurementPenaltyDaysChanged(
+        bytes32 indexed nodeId,
+        uint16 oldPenaltyDays,
+        uint16 newPenaltyDays,
         uint256 epoch
     );
 
@@ -275,7 +295,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
         Prb.SD59x18 apyParameterTwo; /// @dev Second parameter used in APY formula
     }
 
-    bytes32 private constant _ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 private constant _STAKING_SETTINGS_ADMIN_ROLE = keccak256("STAKING_SETTINGS_ADMIN_ROLE");
 
     /// @dev used for NFT APY boost
     uint256 private constant _NFT_SEEKERS_ID_START = 0;
@@ -289,11 +309,13 @@ contract StakingSettings is IStakingSettings, AccessControl {
     Settings private _s;
 
     modifier onlyAdmin() {
-        require(hasRole(_ADMIN_ROLE, msg.sender), "Caller is not an admin");
+        require(hasRole(_STAKING_SETTINGS_ADMIN_ROLE, msg.sender), "Caller is not an admin");
         _;
     }
 
-    constructor() {
+    constructor(address timelockAdmin) {
+        require(Address.isContract(timelockAdmin), "Admin must be a live contract");
+
         _s.nftApyBoostEnabled = false; // Disabled by default
         _nftCollection = address(0); // enabling it forces setting collection
         _s.nftApyBoostSeekers = 25; /// 2,5 * 10
@@ -324,8 +346,10 @@ contract StakingSettings is IStakingSettings, AccessControl {
         _maxApy[StakingUtils.NodeSlaLevel.Platinum] = 1073; // 10.73 * 10ˆ2
         _maxApy[StakingUtils.NodeSlaLevel.Diamond] = 1533; // 15.33 * 10ˆ2
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(_ADMIN_ROLE, msg.sender);
+        _grantRole(_STAKING_SETTINGS_ADMIN_ROLE, timelockAdmin);
+        /// @dev Prevent anyone granting or revoking _STAKING_SETTINGS_ADMIN_ROLE by setting its admin toDEFAULT_ADMIN_ROLE
+        _setRoleAdmin(_STAKING_SETTINGS_ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
+        /// @notice No one has been granted the DEFAULT_ADMIN_ROLE
     }
 
     function setMinStakingAmount(uint256 amount) external override onlyAdmin returns (bool) {
@@ -560,7 +584,7 @@ contract Staking is
 {
     using SafeERC20 for IERC20;
 
-    bytes32 private constant _ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 private constant _STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
     bytes32 private constant _SUPERVISOR_ROLE = keccak256("SUPERVISOR_ROLE");
 
     address private _settings;
@@ -583,7 +607,7 @@ contract Staking is
     error NothingStaked(bytes32 nodeId);
 
     modifier onlyAdmin() {
-        require(hasRole(_ADMIN_ROLE, msg.sender), "Caller is not an admin");
+        require(hasRole(_STAKING_ADMIN_ROLE, msg.sender), "Caller is not an admin");
         _;
     }
 
@@ -796,9 +820,10 @@ contract Staking is
     }
 
     // UUPS function
-    function initialize(address stakingToken, address settingsRepository) public initializer {
-        require(stakingToken != address(0x0), "Token cant be zero");
-        require(settingsRepository != address(0x0), "StakingSettings cant be zero");
+    function initialize(address stakingToken, address settingsRepository, address timelockAdmin) public initializer {
+        require(Address.isContract(timelockAdmin), "Admin must be a live contract");
+        require(Address.isContract(stakingToken), "Token must be a live contract");
+        require(Address.isContract(settingsRepository), "StakingSettings must be a live contract");
 
         __AccessControl_init();
         __ReentrancyGuard_init();
@@ -809,8 +834,14 @@ contract Staking is
         _token = stakingToken;
         _settings = settingsRepository;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(_ADMIN_ROLE, msg.sender);
+        _grantRole(_STAKING_ADMIN_ROLE, timelockAdmin);
+        /// @dev Prevent anyone granting or revoking _STAKING_ADMIN_ROLE by settings its admin to DEFAULT_ADMIN_ROLE
+        _setRoleAdmin(_STAKING_ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
+        /// @notice No one has been granted the DEFAULT_ADMIN_ROLE
+
+        /// @dev Timelock admin contract is the only ony that can grant/revoke supervisor roles
+        _setRoleAdmin(_SUPERVISOR_ROLE, _STAKING_ADMIN_ROLE);
+        /// @notice no _SUPERVISOR_ROLE has been granted so far
     }
 
     // UUPS function
@@ -914,8 +945,32 @@ contract Staking is
         (uint24 minRps, uint24 maxRps) = IStakingSettings(_settings).getMinMaxRps();
         require((minRps <= rps) && (rps <= maxRps), "Invalid RPS");
         require(penaltyDays <= StakingUtils.EPOCH_PERIOD_DAYS, "Invalid penalty days");
-        if (_nodes[nodeId].measurements[epoch].rps != 0) revert ExistingMeasurement(nodeId);
         if (_nodes[nodeId].stakedAmount == 0) revert NothingStaked(nodeId);
+
+        /// @dev check if previous measurement exists by looking at the RPS
+        if (_nodes[nodeId].measurements[epoch].rps != 0) {
+            StakingUtils.Measurement storage oldMeasurement = _nodes[nodeId].measurements[epoch];
+
+            /// @dev If new measurement matches previous measurement then its a duplicate. This allows measurement overrides if values are different.
+            if (
+                (oldMeasurement.rps == rps) &&
+                (oldMeasurement.penaltyDays == penaltyDays) &&
+                (oldMeasurement.slaLevel == slaLevel)
+            ) {
+                revert ExistingMeasurement(nodeId);
+            } else {
+                /// @dev At least one value is different, allow override but raise specific additional events
+                if (oldMeasurement.slaLevel != slaLevel) {
+                    emit NodeMeasurementSlaChanged(nodeId, oldMeasurement.slaLevel, slaLevel, epoch);
+                }
+                if (oldMeasurement.rps != rps) {
+                    emit NodeMeasurementRpsChanged(nodeId, oldMeasurement.rps, rps, epoch);
+                }
+                if (oldMeasurement.penaltyDays != penaltyDays) {
+                    emit NodeMeasurementPenaltyDaysChanged(nodeId, oldMeasurement.penaltyDays, penaltyDays, epoch);
+                }
+            }
+        }
 
         emit NodeMeasured(nodeId, rps, penaltyDays, slaLevel, epoch);
         _nodes[nodeId].measurements[epoch] = StakingUtils.Measurement(Prb.ZERO, Prb.ZERO, rps, penaltyDays, slaLevel);
