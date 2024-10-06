@@ -61,6 +61,8 @@ contract Base is Test, IStakingEvents {
     uint256 public constant CONTRACT_INITIAL_BALANCE = ONE_TOKEN * 1e6 * 30; // 30M
     uint256 public constant MIN_STAKING_AMOUNT = ONE_TOKEN * 1000;
     uint256 public constant MAX_NODE_STAKING_AMOUNT = 1e8 * ONE_TOKEN;
+    uint256 public constant STAKED_AMOUNT_CAP = 1e7 * ONE_TOKEN;
+    uint256 public constant MAX_TOKENS_AVAILABLE = 1e8 * ONE_TOKEN;
     uint16 public constant EPOCH_PERIOD_DAYS = 28;
     uint256 public constant EPOCH_PERIOD_SECONDS = EPOCH_PERIOD_DAYS * 1 days;
     uint24 public constant MIN_RPS = 25;
@@ -109,8 +111,8 @@ contract Base is Test, IStakingEvents {
             calldata_,
             Enum.Operation.Call,
             gasLimit,
-            1,
-            1,
+            0,
+            0,
             address(0),
             address(0),
             nonce
@@ -161,8 +163,8 @@ contract Base is Test, IStakingEvents {
             calldata_,
             Enum.Operation.Call,
             gasLimit,
-            1,
-            1,
+            0,
+            0,
             address(0),
             payable(0),
             signatures
@@ -282,6 +284,19 @@ contract Base is Test, IStakingEvents {
         nftCollection.safeMint(charlie, 4443); // titan nft
     }
 
+    function _setupMinMaxCapStakingAmounts() internal {
+        vm.startPrank(admin);
+        settings.setMinStakingAmount(MIN_STAKING_AMOUNT);
+        settings.setMaxStakingAmountPerNode(MAX_NODE_STAKING_AMOUNT);
+        settings.setStakedAmountCap(STAKED_AMOUNT_CAP);
+        vm.stopPrank();
+    }
+
+    function _ensureMaxStakingCap() internal {
+        vm.prank(admin);
+        settings.setStakedAmountCap(MAX_TOKENS_AVAILABLE);
+    }
+
     function _stakeTokens(
         address staker,
         bytes32 nodeId,
@@ -366,6 +381,7 @@ contract Base is Test, IStakingEvents {
 
         _setupERC20Balances();
         _setupNFTCollectionBalances();
+        _setupMinMaxCapStakingAmounts();
 
         vm.stopPrank();
         _addSupervisors();

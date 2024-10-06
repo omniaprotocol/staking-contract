@@ -125,19 +125,38 @@ contract AdminTest is Base, IStakingSettingsEvents {
         settings.grantRole(STAKING_ADMIN_ROLE, alice);
     }
 
-    // min staking
+    // min staking, staking cap
 
     function testRevertIfNotAdminSetMinStaking() public {
         vm.expectRevert("Caller is not an admin");
         settings.setMinStakingAmount(100);
     }
 
+    function testChangeStakingCap() public {
+        vm.expectEmit(true, true, false, true, address(settings));
+        emit StakedAmountCapChanged(admin, STAKED_AMOUNT_CAP);
+        vm.prank(admin);
+        settings.setStakedAmountCap(STAKED_AMOUNT_CAP);
+    }
+
+    function testRevertIfNotAdminSetStakingCap() public {
+        vm.expectRevert("Caller is not an admin");
+        settings.setStakedAmountCap(STAKED_AMOUNT_CAP);
+    }
+
+    function testRevertIfDecreaseStakingCap() public {
+        uint256 newStakingCap = STAKED_AMOUNT_CAP - 1;
+        vm.prank(admin);
+        vm.expectRevert("Can't decrease cap");
+        settings.setStakedAmountCap(newStakingCap);
+    }
+
+    // min/max rps
+
     function testRevertIfNotAdminSetMinRps() public {
         vm.expectRevert("Caller is not an admin");
         settings.setMinRps(MIN_RPS);
     }
-
-    // min/max rps
 
     function testRevertIfMinRpsBelow1() public {
         uint24 minRps = 0;

@@ -46,6 +46,7 @@ contract ClaimBase is Base {
     }
 
     function testFuzzSimulateClaimRewards(uint256 amount, uint16 extraDays) public {
+        _ensureMaxStakingCap();
         vm.assume(amount > MIN_STAKING_AMOUNT && amount <= MAX_NODE_STAKING_AMOUNT);
         vm.assume(extraDays >= 0 && extraDays < EPOCH_PERIOD_DAYS);
 
@@ -72,6 +73,7 @@ contract ClaimBase is Base {
     }
 
     function testFuzzSimulateClaimPenalty(uint256 amount, uint16 extraDays) public {
+        _ensureMaxStakingCap();
         vm.assume(amount > MIN_STAKING_AMOUNT && amount <= MAX_NODE_STAKING_AMOUNT);
         vm.assume(extraDays >= 0 && extraDays < EPOCH_PERIOD_DAYS);
 

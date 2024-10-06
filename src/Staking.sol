@@ -24,6 +24,7 @@ interface IStakingSettingsEvents {
         uint16 commandersBoost,
         uint16 titansBoost
     );
+    event StakedAmountCapChanged(address indexed author, uint256 amount);
     event MinStakingAmountChanged(address indexed author, uint256 amount);
     event MaxStakingPerNodeChanged(address indexed author, uint256 amount);
     event MaxApyChanged(address indexed author, StakingUtils.NodeSlaLevel indexed slaLevel, uint256 amount);
@@ -93,6 +94,8 @@ interface IStakingEvents {
 }
 
 interface IStakingSettings is IStakingSettingsEvents {
+    function setStakedAmountCap(uint256 amount) external returns (bool);
+
     function setMinStakingAmount(uint256 amount) external returns (bool);
 
     function setMaxStakingAmountPerNode(uint256 amount) external returns (bool);
@@ -124,8 +127,8 @@ interface IStakingSettings is IStakingSettingsEvents {
     /// @param penaltyRate is a % value and must be multiplied by 10ˆ2
     function setPenaltyRate(uint256 penaltyRate) external returns (bool);
 
-    /// @dev Returns min staking amount per stake entry and maximum staked amount per node
-    function getStakingAmountRestrictions() external view returns (uint256, uint256);
+    /// @dev Returns min staking amount per stake entry, maximum staked amount per node and global staked amount cap
+    function getStakingAmountRestrictions() external view returns (uint256, uint256, uint256);
 
     function getMaxApy(StakingUtils.NodeSlaLevel slaLevel) external view returns (uint256);
 
@@ -288,6 +291,7 @@ contract StakingSettings is IStakingSettings, AccessControl {
         bool nftApyBoostEnabled;
         uint256 maxStakingAmountPerNode;
         uint256 minStakingAmount;
+        uint256 stakedAmountCap;
         /// @notice settings set indirectly
         Prb.SD59x18 dailyPenaltyRate; /// @dev stored as a multiplier rate 0.9xxxx
         Prb.SD59x18 epochPenaltyRate; /// @dev stored as a multiplier rate 0.9xxxx
@@ -322,10 +326,11 @@ contract StakingSettings is IStakingSettings, AccessControl {
         _s.nftApyBoostCommanders = 50; /// 5 * 10
         _s.nftApyBoostTitans = 150; /// 15 * 10
 
+        _s.stakedAmountCap = 1e6 * 1e18;
         _s.minStakingAmount = 1000 * 1e18;
         _s.minRps = 25;
         _s.maxRps = 1000;
-        _s.maxStakingAmountPerNode = 1e8 * 1e18;
+        _s.maxStakingAmountPerNode = 5e4 * 1e18;
         _s.nodeOwnerRewardPercent = 0;
         _s.apyBoostStakeLongMinPercent = 30; // APY Boost starts at 30% for min 1year
         _s.apyBoostStakeLongDeltaPercent = 20; // APY Boost goes 30%+20% = 50% for max days (see below)
@@ -350,6 +355,14 @@ contract StakingSettings is IStakingSettings, AccessControl {
         /// @dev Prevent anyone granting or revoking _STAKING_SETTINGS_ADMIN_ROLE by setting its admin toDEFAULT_ADMIN_ROLE
         _setRoleAdmin(_STAKING_SETTINGS_ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
         /// @notice No one has been granted the DEFAULT_ADMIN_ROLE
+    }
+
+    function setStakedAmountCap(uint256 amount) external override onlyAdmin returns (bool) {
+        require(amount > 0, "Cant be zero");
+        require(amount >= _s.stakedAmountCap, "Can't decrease cap");
+        _s.stakedAmountCap = amount;
+        emit StakedAmountCapChanged(msg.sender, amount);
+        return true;
     }
 
     function setMinStakingAmount(uint256 amount) external override onlyAdmin returns (bool) {
@@ -474,8 +487,8 @@ contract StakingSettings is IStakingSettings, AccessControl {
     }
 
     /// @dev Returns min staking amount per stake entry and maximum staked amount per node
-    function getStakingAmountRestrictions() external view override returns (uint256, uint256) {
-        return (_s.minStakingAmount, _s.maxStakingAmountPerNode);
+    function getStakingAmountRestrictions() external view override returns (uint256, uint256, uint256) {
+        return (_s.minStakingAmount, _s.maxStakingAmountPerNode, _s.stakedAmountCap);
     }
 
     function getMaxApy(StakingUtils.NodeSlaLevel slaLevel) external view override returns (uint256) {
@@ -591,6 +604,7 @@ contract Staking is
     address private _token;
     uint256 private _contractStartTimestamp;
     uint256 private _stakeIdCounter;
+    uint256 private _currentStakedAmount;
 
     mapping(bytes32 => StakingUtils.Node) private _nodes;
     mapping(uint256 => StakingUtils.Stake) private _stakes;
@@ -663,12 +677,13 @@ contract Staking is
         uint16 stakingDays
     ) external nonReentrant whenNotPaused returns (uint256) {
         require(staker != address(0), "Invalid address");
-        (uint256 minStakingAmount, uint256 maxStakingAmountPerNode) = IStakingSettings(_settings)
-            .getStakingAmountRestrictions();
+        (uint256 minStakingAmount, uint256 maxStakingAmountPerNode, uint256 stakedAmountCap) = IStakingSettings(
+            _settings
+        ).getStakingAmountRestrictions();
         require(amount >= minStakingAmount, "Amount too small");
         require(stakingDays >= StakingUtils.EPOCH_PERIOD_DAYS, "Period too short");
         require(IERC20(_token).allowance(msg.sender, address(this)) >= amount, "Not enough allowance");
-
+        require((_currentStakedAmount + amount) <= stakedAmountCap, "Overflows staking cap");
         require((_nodes[nodeId].stakedAmount + amount) <= maxStakingAmountPerNode, "Node max amount reached");
 
         return _stakeTokens(staker, nodeId, amount, stakingDays);
@@ -679,11 +694,13 @@ contract Staking is
         uint256 amount,
         uint16 stakingDays
     ) external nonReentrant whenNotPaused returns (uint256) {
-        (uint256 minStakingAmount, uint256 maxStakingAmountPerNode) = IStakingSettings(_settings)
-            .getStakingAmountRestrictions();
+        (uint256 minStakingAmount, uint256 maxStakingAmountPerNode, uint256 stakedAmountCap) = IStakingSettings(
+            _settings
+        ).getStakingAmountRestrictions();
         require(amount >= minStakingAmount, "Amount too small");
         require(stakingDays >= StakingUtils.EPOCH_PERIOD_DAYS, "Period too short");
         require(IERC20(_token).allowance(msg.sender, address(this)) >= amount, "Not enough allowance");
+        require((_currentStakedAmount + amount) <= stakedAmountCap, "Overflows staking cap");
         require((_nodes[nodeId].stakedAmount + amount) <= maxStakingAmountPerNode, "Node max amount reached");
 
         return _stakeTokens(msg.sender, nodeId, amount, stakingDays);
@@ -719,10 +736,14 @@ contract Staking is
         /// @dev Also update amount stake per node used in max amount per node restrictions.
         _nodes[stakeNodeId].stakedAmount -= stakeAmount;
 
+        /// @dev Also update _currentStakedAmount accordingly
+        _currentStakedAmount -= stakeAmount;
+
         IERC20(_token).safeTransfer(
             msg.sender,
             claimReward > 0 ? StakingUtils.sumUintInt(stakeAmount, claimReward) : stakeAmount
         );
+
         emit TokensUnstaked(msg.sender, stakeId, stakeNodeId, stakeAmount);
     }
 
@@ -928,9 +949,9 @@ contract Staking is
         );
         _stakeIds[staker].push(stakeIdCounter);
         _nodes[nodeId].stakedAmount += amount;
+        _currentStakedAmount += amount;
 
         emit TokensStaked(staker, stakeIdCounter, nodeId, amount, stakingDays);
-
         return stakeIdCounter;
     }
 

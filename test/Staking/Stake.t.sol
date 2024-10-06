@@ -120,8 +120,49 @@ contract StakingTest is Base {
         staking.stakeTokens(NODE_1_ID, amount, period);
     }
 
+    function testStakeUnstakeStakeAvoidCap() public {
+        uint256 amount = STAKED_AMOUNT_CAP;
+        uint16 period = EPOCH_PERIOD_DAYS;
+
+        uint256 stakeId = _stakeTokens(alice, NODE_1_ID, amount, period);
+        vm.startPrank(bob);
+        token.approve(address(staking), amount);
+        // Try new stake from bob that should fail due to staking cap
+        vm.expectRevert("Overflows staking cap");
+        staking.stakeTokens(NODE_1_ID, MIN_STAKING_AMOUNT, period);
+        vm.stopPrank();
+
+        //Time passes and Alice unstakes
+        _fastforward(EPOCH_PERIOD_SECONDS);
+        _addMeasurement(1, NODE_1_ID, 1000, 0, StakingUtils.NodeSlaLevel.Diamond);
+        vm.prank(alice);
+        staking.unstakeTokens(stakeId);
+
+        //Bob successfully manages to stake now
+        vm.startPrank(bob);
+        token.approve(address(staking), MIN_STAKING_AMOUNT);
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit TokensStaked(bob, 2, NODE_1_ID, MIN_STAKING_AMOUNT, period);
+        staking.stakeTokens(NODE_1_ID, MIN_STAKING_AMOUNT, period);
+        vm.stopPrank();
+    }
+
+    function testRevertIfAboveCapOne() public {
+        uint256 amount = STAKED_AMOUNT_CAP + 1;
+        uint16 period = EPOCH_PERIOD_DAYS;
+
+        vm.startPrank(alice);
+        token.approve(address(staking), amount);
+
+        vm.expectRevert("Overflows staking cap");
+        staking.stakeTokens(NODE_1_ID, amount, period);
+    }
+
     function testRevertIfAboveNodeMaxTokens() public {
-        uint256 amount = MAX_NODE_STAKING_AMOUNT + 1;
+        uint256 maxStakePerNode = 1e3 * 1e18;
+        vm.prank(admin);
+        settings.setMaxStakingAmountPerNode(maxStakePerNode);
+        uint256 amount = maxStakePerNode + 1;
         uint16 period = EPOCH_PERIOD_DAYS;
 
         vm.startPrank(alice);
@@ -158,6 +199,7 @@ contract StakingTest is Base {
 
     /// @notice if previous stake was unstaked
     function testCanStakeAgainAfterUnstake() public {
+        _ensureMaxStakingCap();
         uint256 amount = MAX_NODE_STAKING_AMOUNT;
         uint16 period = EPOCH_PERIOD_DAYS;
 
@@ -295,6 +337,7 @@ contract StakingTest is Base {
     }
 
     function testFuzzStakeTokensForOthers(uint256 amount, uint16 period, bytes32 nodeId) public {
+        _ensureMaxStakingCap();
         vm.assume(amount > MIN_STAKING_AMOUNT && amount <= MAX_NODE_STAKING_AMOUNT);
         vm.assume(period >= EPOCH_PERIOD_DAYS);
 
@@ -334,6 +377,7 @@ contract StakingTest is Base {
     }
 
     function testFuzzStakeTokens(uint256 amount, uint16 period, bytes32 nodeId) public {
+        _ensureMaxStakingCap();
         vm.assume(amount > MIN_STAKING_AMOUNT && amount <= MAX_NODE_STAKING_AMOUNT);
         vm.assume(period >= EPOCH_PERIOD_DAYS);
 

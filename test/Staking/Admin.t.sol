@@ -258,6 +258,7 @@ contract AdminTest is Base, IStakingSettingsEvents {
     // min staking
 
     function testFuzzSetMinStakingFromMultisig(uint256 amount) public {
+        _ensureMaxStakingCap();
         /// @dev max staking per node default
         vm.assume(amount <= 1e8 * 1e18 && amount > 0);
 
@@ -276,6 +277,7 @@ contract AdminTest is Base, IStakingSettingsEvents {
     }
 
     function testFuzzSetMinStakingFromAdmin(uint256 amount) public {
+        _ensureMaxStakingCap();
         /// @dev max staking per node default
         vm.assume(amount <= 1e8 * 1e18 && amount > 0);
 
@@ -291,6 +293,7 @@ contract AdminTest is Base, IStakingSettingsEvents {
     // max staking per node
 
     function testFuzzSetMaxStakingAmountPerNode(uint256 amount) public {
+        _ensureMaxStakingCap();
         // default min staking and max token
         vm.assume(amount >= 1000 * ONE_TOKEN && amount < 100e6 ether);
 

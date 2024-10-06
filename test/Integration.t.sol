@@ -11,6 +11,7 @@ contract IntegrationTest is Base, ERC1967UpgradeUpgradeable {
     // bob -   1 stake (275 days)
 
     function testMultipleStakers() public {
+        _ensureMaxStakingCap();
         uint16 alicePeriod1 = 276;
         uint256 aliceAmount1 = ONE_TOKEN * 1e5;
 
@@ -105,10 +106,10 @@ contract IntegrationTest is Base, ERC1967UpgradeUpgradeable {
         );
 
         /// @dev Get 2 out of 3 signatures to approve the schedule upgrade call
-        bytes memory signatures = _multisigApprove2of3(address(timelockAdmin), scheduleCalldata, DEFAULT_GAS_LIMIT);
+        bytes memory signatures = _multisigApprove2of3(address(timelockAdmin), scheduleCalldata, 0);
 
         /// @dev Schedule the upgrade call
-        _multisigExecute(address(timelockAdmin), scheduleCalldata, DEFAULT_GAS_LIMIT, signatures);
+        _multisigExecute(address(timelockAdmin), scheduleCalldata, 0, signatures);
 
         /// @dev Encode call to timelock contract in order to execute the upgrade
         bytes memory executeCalldata = abi.encodeWithSignature(
@@ -124,7 +125,7 @@ contract IntegrationTest is Base, ERC1967UpgradeUpgradeable {
         _fastforward(2 days);
 
         /// @dev Get 2 of of 3 signature to approve the execute upgrade call
-        signatures = _multisigApprove2of3(address(timelockAdmin), executeCalldata, DEFAULT_GAS_LIMIT);
+        signatures = _multisigApprove2of3(address(timelockAdmin), executeCalldata, 0);
 
         vm.expectEmit(true, true, true, true, address(staking));
         emit UpgradeAuthorized(admin, address(staking), address(stakingV2));
@@ -132,7 +133,7 @@ contract IntegrationTest is Base, ERC1967UpgradeUpgradeable {
         emit Upgraded(address(stakingV2));
 
         /// @dev Execute the upgrade call
-        _multisigExecute(address(timelockAdmin), executeCalldata, DEFAULT_GAS_LIMIT, signatures);
+        _multisigExecute(address(timelockAdmin), executeCalldata, 0, signatures);
 
         /// @dev Make sure upgrade was successful by calling a method that exists only in new implementation
         stakingV2 = StakingV2(address(proxy));
@@ -193,10 +194,10 @@ contract IntegrationTest is Base, ERC1967UpgradeUpgradeable {
             );
 
             /// @dev Get 2 out of 3 signatures to approve the schedule revokeRole call
-            signatures = _multisigApprove2of3(address(timelockAdmin), scheduleRevokeCalldata, DEFAULT_GAS_LIMIT);
+            signatures = _multisigApprove2of3(address(timelockAdmin), scheduleRevokeCalldata, 0);
 
             /// @dev Schedule the revokeRole call
-            _multisigExecute(address(timelockAdmin), scheduleRevokeCalldata, DEFAULT_GAS_LIMIT, signatures);
+            _multisigExecute(address(timelockAdmin), scheduleRevokeCalldata, 0, signatures);
         }
 
         /// @dev Schedule grantRole call
@@ -212,10 +213,9 @@ contract IntegrationTest is Base, ERC1967UpgradeUpgradeable {
                 TWO_DAYS_IN_SECONDS
             );
 
-            signatures = _multisigApprove2of3(address(timelockAdmin), scheduleGrantCalldata, DEFAULT_GAS_LIMIT);
-
+            signatures = _multisigApprove2of3(address(timelockAdmin), scheduleGrantCalldata, 0);
             /// @dev Schedule the grantRole call
-            _multisigExecute(address(timelockAdmin), scheduleGrantCalldata, DEFAULT_GAS_LIMIT, signatures);
+            _multisigExecute(address(timelockAdmin), scheduleGrantCalldata, 0, signatures);
         }
 
         /// @dev Time travel 48 hours
@@ -234,13 +234,13 @@ contract IntegrationTest is Base, ERC1967UpgradeUpgradeable {
             );
 
             /// @dev Get 2 of of 3 signature to approve the execute revokeRole call
-            signatures = _multisigApprove2of3(address(timelockAdmin), executeRevokeCalldata, DEFAULT_GAS_LIMIT);
+            signatures = _multisigApprove2of3(address(timelockAdmin), executeRevokeCalldata, 0);
 
             vm.expectEmit(true, true, true, true, address(staking));
             emit RoleRevoked(SUPERVISOR_ROLE, supervisor, address(timelockAdmin));
 
             /// @dev Execute the revokeRole call
-            _multisigExecute(address(timelockAdmin), executeRevokeCalldata, DEFAULT_GAS_LIMIT, signatures);
+            _multisigExecute(address(timelockAdmin), executeRevokeCalldata, 0, signatures);
         }
 
         /// @dev Execute grantRole call
@@ -256,13 +256,13 @@ contract IntegrationTest is Base, ERC1967UpgradeUpgradeable {
             );
 
             /// @dev Get 2 of of 3 signature to approve the execute grantRole call
-            signatures = _multisigApprove2of3(address(timelockAdmin), executeGrantCalldata, DEFAULT_GAS_LIMIT);
+            signatures = _multisigApprove2of3(address(timelockAdmin), executeGrantCalldata, 0);
 
             vm.expectEmit(true, true, true, true, address(staking));
             emit RoleGranted(SUPERVISOR_ROLE, newSupervisor, address(timelockAdmin));
 
             /// @dev Execute the grantRole call
-            _multisigExecute(address(timelockAdmin), executeGrantCalldata, DEFAULT_GAS_LIMIT, signatures);
+            _multisigExecute(address(timelockAdmin), executeGrantCalldata, 0, signatures);
         }
 
         /// @dev Make sure old supervisor can't submit any more measurements

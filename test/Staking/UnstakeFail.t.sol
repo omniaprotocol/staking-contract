@@ -77,6 +77,7 @@ contract UnstakeFailTest is Base {
     }
 
     function testRevertIfNoMeasurementStartedLater() public {
+        _ensureMaxStakingCap();
         uint256 stakeAmount = ONE_TOKEN * 1e7;
         uint16 period = 28;
         uint256 stakerBalanceBefore = token.balanceOf(alice);
