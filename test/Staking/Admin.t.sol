@@ -142,62 +142,6 @@ contract AdminTest is Base, IStakingSettingsEvents {
         staking.unstakeTokens(stakeId);
     }
 
-    // Emergency withdrawn
-
-    function testRevertEmergencyWithdrawWhileActive() public {
-        vm.prank(admin);
-        vm.expectRevert("Pausable: not paused");
-        bytes32 reason = 0x00;
-        staking.emergencyWithdraw(ONE_TOKEN * 1e6 * 5, reason); // 5M tokens
-    }
-
-    function testRevertNonAdminEmergencyWithdraw() public {
-        vm.prank(admin);
-        staking.emergencyPause();
-        vm.prank(mallory);
-        vm.expectRevert("Caller is not an admin");
-        bytes32 reason = 0x00;
-        staking.emergencyWithdraw(ONE_TOKEN * 1e6 * 5, reason); // 5M tokens
-    }
-
-    function testFuzzEmergencyWithdrawFromMultisig(uint256 amount) public {
-        vm.assume(ONE_TOKEN < amount && amount <= ONE_TOKEN * 1e6 * 5);
-
-        // Pre-requisites
-        vm.prank(admin);
-        staking.emergencyPause();
-
-        uint256 balanceBefore = token.balanceOf(admin);
-        bytes32 reason = 0x00;
-
-        bytes memory calldata_ = abi.encodeWithSignature("emergencyWithdraw(uint256,bytes32)", amount, reason);
-        vm.prank(multisig);
-        _timelockSchedule(address(staking), calldata_, TWO_DAYS_IN_SECONDS);
-        _fastforward(TWO_DAYS_IN_SECONDS);
-
-        vm.prank(multisig);
-        vm.expectEmit(true, true, true, true, address(staking));
-        emit EmergencyTokenWithdraw(admin, reason, amount);
-        _timelockExecute(address(staking), calldata_);
-
-        // Make sure balances reflect that
-        assertEq(token.balanceOf(admin), balanceBefore + amount);
-    }
-
-    function testFuzzEmergencyWithdrawFromAdmin(uint256 amount) public {
-        vm.assume(ONE_TOKEN < amount && amount <= ONE_TOKEN * 1e6 * 5);
-        vm.startPrank(admin);
-        staking.emergencyPause();
-        uint256 balanceBefore = token.balanceOf(admin);
-        bytes32 reason = 0x00;
-        vm.expectEmit(true, true, true, true, address(staking));
-        emit EmergencyTokenWithdraw(admin, reason, amount);
-        staking.emergencyWithdraw(amount, reason); // 5M tokens
-
-        // Make sure balances reflect that
-        assertEq(token.balanceOf(admin), balanceBefore + amount);
-    }
-
     // supervisor management
 
     function testRevertIfNotAdminAddSupervisor() public {

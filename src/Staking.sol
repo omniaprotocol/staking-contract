@@ -85,7 +85,6 @@ interface IStakingEvents {
     /// @notice admin events
     event EmergencyPause(address indexed author);
     event EmergencyResume(address indexed author);
-    event EmergencyTokenWithdraw(address indexed to, bytes32 reason, uint256 amount);
     event UpgradeAuthorized(
         address indexed author,
         address indexed oldImplementation,
@@ -643,12 +642,6 @@ contract Staking is
     function emergencyResume() external onlyAdmin {
         _unpause();
         emit EmergencyResume(msg.sender);
-    }
-
-    function emergencyWithdraw(uint256 amount, bytes32 reason) external whenPaused onlyAdmin {
-        require(amount > 0, "Cant be zero");
-        IERC20(_token).safeTransfer(msg.sender, amount);
-        emit EmergencyTokenWithdraw(msg.sender, reason, amount);
     }
 
     function addMeasurements(
